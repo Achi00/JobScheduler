@@ -7,20 +7,9 @@ using System.Threading.Tasks;
 
 namespace JobScheduler.Abstractions.Interfaces
 {
+    // user inplamented
     public interface IJobHandler<in TPayload>
     {
-        Task HandleAsync(TPayload payload);
-    }
-
-    public interface IJobHandler<TPayload> : IJobHandler
-    {
-        Task ExecuteAsync(TPayload payload, CancellationToken ct);
-
-        // default interface method bridges generic to non-generic
-        Task IJobHandler.ExecuteAsync(string payloadJson, CancellationToken ct)
-        {
-            var payload = JsonSerializer.Deserialize<TPayload>(payloadJson)!;
-            return ExecuteAsync(payload, ct);
-        }
+        Task HandleAsync(TPayload payload, CancellationToken cancellationToken);
     }
 }
