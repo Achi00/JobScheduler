@@ -20,5 +20,8 @@ namespace JobScheduler.Abstractions.Models
         public string? LastError { get; set; }
         // null for one-off jobs, set for recurring
         public string? CronExpression { get; set; }
+        // soft delete, job 30 Days old
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
     }
 }
