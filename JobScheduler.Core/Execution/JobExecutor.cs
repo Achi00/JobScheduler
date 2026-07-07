@@ -5,6 +5,7 @@ using System.Text.Json;
 
 namespace JobScheduler.Core.Execution
 {
+    // stored json job -> strongly typed user handler
     internal sealed class JobExecutor<TPayload, THandler> : IJobExecutor where THandler : IJobHandler<TPayload>
     {
         public string JobType { get; }
@@ -18,7 +19,6 @@ namespace JobScheduler.Core.Execution
         // deserialize json, resolve handler from DI, call HandleAsync
         public async Task ExecuteAsync(IServiceProvider serviceProvider, string payloadJson, JobExecutionContext context, CancellationToken cancellationToken)
         {
-            // deserialize based on passed type
             var payload = JsonSerializer.Deserialize<TPayload>(payloadJson);
 
             if (payload is null)
