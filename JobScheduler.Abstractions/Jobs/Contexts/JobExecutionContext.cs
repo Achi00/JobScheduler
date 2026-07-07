@@ -8,13 +8,15 @@ namespace JobScheduler.Abstractions.Jobs.Contexts
         public JobId JobId{ get; }
         public string JobType { get; }
         public int AttemptCount { get; }
+        public DateTimeOffset CreatedAt { get; }
         public DateTimeOffset StartedAt { get; }
 
-        public JobExecutionContext(JobId jobId, string jobType, int attemptCount, DateTimeOffset startedAt)
+        public JobExecutionContext(JobId jobId, string jobType, int attemptCount, DateTimeOffset createdAt, DateTimeOffset startedAt)
         {
             JobId = jobId;
             JobType = jobType;
             AttemptCount = attemptCount;
+            CreatedAt = createdAt;
             StartedAt = startedAt;
         }
     }
