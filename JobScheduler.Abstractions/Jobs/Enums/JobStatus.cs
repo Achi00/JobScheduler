@@ -1,4 +1,4 @@
-﻿namespace JobScheduler.Abstractions.Enums
+﻿namespace JobScheduler.Abstractions.Jobs.Enums
 {
     public enum JobStatus
     {

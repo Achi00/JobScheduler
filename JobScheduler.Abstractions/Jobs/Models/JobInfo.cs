@@ -1,6 +1,7 @@
-﻿using JobScheduler.Abstractions.Enums;
+﻿using JobScheduler.Abstractions.Jobs.Enums;
+using JobScheduler.Abstractions.Jobs.Structs;
 
-namespace JobScheduler.Abstractions
+namespace JobScheduler.Abstractions.Jobs.Models
 {
     // read model
     public sealed record JobInfo

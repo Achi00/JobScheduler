@@ -1,4 +1,4 @@
-﻿namespace JobScheduler.Abstractions.Attributes
+﻿namespace JobScheduler.Abstractions.Jobs.Attributes
 {
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
     public sealed class JobNameAttribute : Attribute

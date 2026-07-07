@@ -1,6 +1,6 @@
-﻿using JobScheduler.Abstractions.Enums;
+﻿using JobScheduler.Abstractions.Jobs.Enums;
 
-namespace JobScheduler.Abstractions.Models.Internal
+namespace JobScheduler.Abstractions.Models
 {
     internal sealed class JobRecord
     {

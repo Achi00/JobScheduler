@@ -1,4 +1,4 @@
-﻿namespace JobScheduler.Abstractions.Interfaces
+﻿namespace JobScheduler.Abstractions.Jobs.Interfaces
 {
     internal interface IBackgroundJobClient
     {

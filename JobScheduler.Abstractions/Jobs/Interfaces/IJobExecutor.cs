@@ -1,4 +1,4 @@
-﻿namespace JobScheduler.Abstractions.Interfaces.Internal
+﻿namespace JobScheduler.Abstractions.Jobs.Interfaces
 {
     internal interface IJobExecutor
     {

@@ -1,4 +1,4 @@
-﻿namespace JobScheduler.Abstractions
+﻿namespace JobScheduler.Abstractions.Jobs.Structs
 {
     public readonly record struct JobId(Guid Value)
     {
