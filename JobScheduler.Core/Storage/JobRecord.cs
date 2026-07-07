@@ -1,4 +1,6 @@
-﻿namespace JobScheduler.Core.Storage
+﻿using JobScheduler.Abstractions.Jobs.Enums;
+
+namespace JobScheduler.Core.Storage
 {
     internal sealed class JobRecord
     {
