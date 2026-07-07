@@ -1,4 +1,5 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
+using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Registry;
 using JobScheduler.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,7 +35,7 @@ namespace JobScheduler.Core.Execution
 
             var context = new JobExecutionContext
             (
-                jobId: new Abstractions.Jobs.Structs.JobId(job.Id),
+                jobId: JobId.FromGuid(job.Id),
                 jobType: job.JobType,
                 attemptCount: job.AttemptCount,
                 createdAt: job.CreatedAt,
