@@ -1,6 +1,6 @@
-﻿namespace JobScheduler.Abstractions.Jobs.Interfaces
+﻿namespace JobScheduler.Core.Execution
 {
-    internal interface IJobExecutor
+    public interface IJobExecutor
     {
         string JobType { get; }
         Task ExecuteAsync(IServiceProvider serviceProvider, string payloadJson, CancellationToken cancellationToken);
