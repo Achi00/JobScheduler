@@ -3,7 +3,7 @@ using JobScheduler.Abstractions.Jobs.Structs;
 
 namespace JobScheduler.Abstractions.Jobs.Models
 {
-    // read model
+    // read model for publich view dashboard/API
     public sealed record JobInfo
     (
         JobId Id,
