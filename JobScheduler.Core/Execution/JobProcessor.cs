@@ -67,7 +67,7 @@ namespace JobScheduler.Core.Execution
 
             if (nextAttemptCount >= job.MaxAttempts)
             {
-                await _jobStore.MarkFailedAsync(job.Id, job.LockToken, ex.ToString(), ct);
+                await _jobStore.MarkFailedAsync(job.Id, ex.ToString(), ct);
 
                 return;
             }
