@@ -21,6 +21,13 @@ namespace JobScheduler.Core.HostedServices
                 await using var scope = _scopeFactory.CreateAsyncScope();
 
                 var processor = scope.ServiceProvider.GetRequiredService<JobProcessor>();
+
+                var processed = await processor.TryProcessOneAsync(_workerId, TimeSpan.FromSeconds(5), stoppingToken);
+
+                if (!processed)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+                }
             }
         }
     }
