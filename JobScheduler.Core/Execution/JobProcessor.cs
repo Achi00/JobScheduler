@@ -24,12 +24,15 @@ namespace JobScheduler.Core.Execution
 
         public async Task<bool> TryProcessOneAsync(string workerId, CancellationToken ct)
         {
-            var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, TimeSpan.FromMinutes(5), ct);
+            var job = await _jobStore.GetNextRunnableJobAsync(ct);
 
             if (job is null)
             {
                 return false;
             }
+
+            // mark job process as in processing state
+            await _jobStore.MarkProcessingAsync(job.Id, ct);
 
             await using var scope = _scopeFactory.CreateAsyncScope();
 
@@ -48,7 +51,7 @@ namespace JobScheduler.Core.Execution
 
                 await executor.ExecuteAsync(scope.ServiceProvider, job.PayloadJson, context, ct);
 
-                await _jobStore.MarkSucceededAsync(job.Id, job.LockToken, ct);
+                await _jobStore.MarkSucceededAsync(job.Id, ct);
             }
             catch (Exception ex)
             {

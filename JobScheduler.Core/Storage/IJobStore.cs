@@ -2,6 +2,7 @@
 {
     internal interface IJobStore
     {
+        //TODO: GetNextRunnableJobAsync + MarkProcessingAsync should be atomic
         Task CreateAsync(JobRecord job, CancellationToken cancellationToken);
         Task<JobRecord?> GetNextRunnableJobAsync(CancellationToken cancellationToken);
         Task MarkProcessingAsync(Guid jobId, CancellationToken cancellationToken);
