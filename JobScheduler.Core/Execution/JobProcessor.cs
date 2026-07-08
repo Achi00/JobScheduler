@@ -22,17 +22,16 @@ namespace JobScheduler.Core.Execution
             _scopeFactory = scopeFactory;
         }
 
-        public async Task<bool> TryProcessOneAsync(string workerId, CancellationToken ct)
+        public async Task<bool> TryProcessOneAsync(string workerId, TimeSpan duration, CancellationToken ct)
         {
-            var job = await _jobStore.GetNextRunnableJobAsync(ct);
+            // TryClaimNextRunnableJobAsync mark's job as processing state
+
+            var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, duration, ct);
 
             if (job is null)
             {
                 return false;
             }
-
-            // mark job process as in processing state
-            await _jobStore.MarkProcessingAsync(job.Id, ct);
 
             await using var scope = _scopeFactory.CreateAsyncScope();
 
@@ -51,7 +50,7 @@ namespace JobScheduler.Core.Execution
 
                 await executor.ExecuteAsync(scope.ServiceProvider, job.PayloadJson, context, ct);
 
-                await _jobStore.MarkSucceededAsync(job.Id, ct);
+                await _jobStore.MarkSucceededAsync(job.Id, job.LockToken, ct);
             }
             catch (Exception ex)
             {
@@ -67,7 +66,7 @@ namespace JobScheduler.Core.Execution
 
             if (nextAttemptCount >= job.MaxAttempts)
             {
-                await _jobStore.MarkFailedAsync(job.Id, ex.ToString(), ct);
+                await _jobStore.MarkFailedAsync(job.Id, job.LockToken, ex.ToString(), ct);
 
                 return;
             }
