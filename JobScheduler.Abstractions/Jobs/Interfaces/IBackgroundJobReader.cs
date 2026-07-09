@@ -6,6 +6,6 @@ namespace JobScheduler.Abstractions.Jobs.Interfaces
     // reads job state
     public interface IBackgroundJobReader
     {
-        Task<JobInfo?> GetByIdAsunc(JobId jobId, CancellationToken cancellationToken = default);
+        Task<JobInfo?> GetByIdAsync(JobId jobId, CancellationToken cancellationToken = default);
     }
 }

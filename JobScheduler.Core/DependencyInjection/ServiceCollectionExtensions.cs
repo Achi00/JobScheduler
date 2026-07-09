@@ -17,6 +17,8 @@ namespace JobScheduler.Core.DependencyInjection
             services.AddScoped<IBackgroundJobClient, BackgroundJobClient>();
             services.AddScoped<JobProcessor>();
 
+            services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
+
             services.AddHostedService<JobWorkerHostedService>();
 
             return services;

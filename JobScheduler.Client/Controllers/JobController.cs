@@ -1,4 +1,5 @@
 ﻿using JobScheduler.Abstractions.Jobs.Interfaces;
+using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Client.EmailServices;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,9 +19,16 @@ namespace JobScheduler.Client.Controllers
         }
 
         [HttpGet("{jobId:guid}")]
-        public async Task<IActionResult> Get(Guid jobId)
+        public async Task<IActionResult> GetJob(Guid jobId, [FromServices] IBackgroundJobReader reader, CancellationToken cancellationToken)
         {
+            var job = await reader.GetByIdAsync(JobId.FromGuid(jobId), cancellationToken);
 
+            if (job == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(job);
         }
 
         [HttpPost("send-email")]
