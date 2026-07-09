@@ -1,6 +1,7 @@
 ﻿using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Abstractions.Jobs.Structs;
-using JobScheduler.Client.EmailServices;
+using JobScheduler.Client.Email.Failure;
+using JobScheduler.Client.Email.Success;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -31,6 +32,7 @@ namespace JobScheduler.Client.Controllers
             return Ok(job);
         }
 
+        // success
         [HttpPost("send-email")]
         public async Task<IActionResult> SendEmail(CancellationToken cancellationToken)
         {
@@ -42,6 +44,17 @@ namespace JobScheduler.Client.Controllers
             {
                 JobId = jobId
             });
+        }
+
+        // testing behaivor on failing
+        [HttpPost("failing")]
+        public async Task<IActionResult> EnqueueFailingJob(IBackgroundJobClient jobs, CancellationToken cancellationToken)
+        {
+            var jobId = await jobs.EnqueueAsync(
+                new FailingJob("test"),
+                cancellationToken);
+
+            return Accepted(new { JobId = jobId });
         }
     }
 }

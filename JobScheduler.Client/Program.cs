@@ -1,5 +1,5 @@
-using JobScheduler.Client.Email;
-using JobScheduler.Client.EmailServices;
+using JobScheduler.Client.Email.Failure;
+using JobScheduler.Client.Email.Success;
 using JobScheduler.Core.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +16,8 @@ builder.Services.AddJobSchedulerCore();
 
 // add custom job handlers
 builder.Services.AddJob<SendEmailJob, SendEmailJobHandler>();
+// add failing job handler for testing
+builder.Services.AddJob<FailingJob, FailingJobHandler>();
 
 var app = builder.Build();
 

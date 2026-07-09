@@ -1,8 +1,7 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
 using JobScheduler.Abstractions.Jobs.Interfaces;
-using JobScheduler.Client.EmailServices;
 
-namespace JobScheduler.Client.Email
+namespace JobScheduler.Client.Email.Success
 {
     // IJobHandler comes from my job scheduler core layer
     public class SendEmailJobHandler : IJobHandler<SendEmailJob>
