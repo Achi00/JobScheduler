@@ -1,5 +1,6 @@
 ﻿using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Core.Execution;
+using JobScheduler.Core.HostedServices;
 using JobScheduler.Core.Registry;
 using JobScheduler.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,8 @@ namespace JobScheduler.Core.DependencyInjection
 
             services.AddScoped<IBackgroundJobClient, BackgroundJobClient>();
             services.AddScoped<JobProcessor>();
+
+            services.AddHostedService<JobWorkerHostedService>();
 
             return services;
         }
