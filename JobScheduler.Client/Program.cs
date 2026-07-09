@@ -1,3 +1,4 @@
+using JobScheduler.Client.Email;
 using JobScheduler.Client.EmailServices;
 using JobScheduler.Core.DependencyInjection;
 
