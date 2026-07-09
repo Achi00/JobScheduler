@@ -17,7 +17,7 @@ namespace JobScheduler.Core.Execution
 
         public JobProcessor(IJobStore jobStore, JobRegistry jobRegistry, IServiceScopeFactory scopeFactory)
         {
-            _jobRegistry = jobRegistry;
+            _jobStore = jobStore;
             _jobRegistry = jobRegistry;
             _scopeFactory = scopeFactory;
         }
