@@ -151,5 +151,15 @@ namespace JobScheduler.Core.Storage
             return _jobs.FirstOrDefault(j => j.Id == jobId)
                    ?? throw new InvalidOperationException($"Job '{jobId}' was not found.");
         }
+
+        public Task<JobRecord?> GetByIdAsync(Guid jobId, CancellationToken cancellationToken)
+        {
+            lock (_lock)
+            {
+                var job = _jobs.FirstOrDefault(j => j.Id == jobId);
+
+                return Task.FromResult(job is null ? null : Clone(job));
+            }
+        }
     }
 }

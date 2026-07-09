@@ -17,6 +17,12 @@ namespace JobScheduler.Client.Controllers
             _jobs = jobs;
         }
 
+        [HttpGet("{jobId:guid}")]
+        public async Task<IActionResult> Get(Guid jobId)
+        {
+
+        }
+
         [HttpPost("send-email")]
         public async Task<IActionResult> SendEmail(CancellationToken cancellationToken)
         {
