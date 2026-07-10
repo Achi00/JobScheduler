@@ -69,7 +69,7 @@ namespace JobScheduler.Core.Execution
 
             if (job.AttemptCount >= job.MaxAttempts)
             {
-                await _jobStore.MarkFailedAsync(job.Id, job.LockToken, ex.ToString(), ct);
+                await _jobStore.MarkFailedAsync(job.Id, job.LockToken, ex, ct);
 
                 _logger.LogInformation("Job {JobId} marked as failed after {AttemptCount} tryes", job.Id, job.AttemptCount);
 
@@ -78,7 +78,7 @@ namespace JobScheduler.Core.Execution
 
             var delay = GetRetryDelay(job.AttemptCount);
 
-            await _jobStore.MarkRetryingAsync(job.Id, job.LockToken, ex.ToString(), DateTimeOffset.UtcNow.Add(delay), ct);
+            await _jobStore.MarkRetryingAsync(job.Id, job.LockToken, ex, DateTimeOffset.UtcNow.Add(delay), ct);
         }
 
         private static TimeSpan GetRetryDelay(int attemptCount)

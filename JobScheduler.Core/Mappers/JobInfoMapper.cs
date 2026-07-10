@@ -18,7 +18,7 @@ namespace JobScheduler.Core.Mappers
                 NextRunAt: record.NextRunAt,
                 StartedAt: record.StartedAt,
                 CompletedAt: record.CompletedAt,
-                LastError: record.LastError);
+                LastError: record.LastErrorMessage);
         }
     }
 }

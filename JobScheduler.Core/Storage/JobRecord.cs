@@ -17,8 +17,12 @@ namespace JobScheduler.Core.Storage
         public DateTimeOffset? LockedUntil { get; set; }
         public string? LockedBy { get; set; }
         public long LockToken { get; set; }
-        public string? LastError { get; set; }
         public bool IsDeleted { get; set; }
         public DateTimeOffset? DeletedAt { get; set; }
+
+        // internal details
+        public string? LastErrorMessage { get; set; }
+        public string? LastErrorType { get; set; }
+        public string? LastErrorDetails { get; set; }
     }
 }

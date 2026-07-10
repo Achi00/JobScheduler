@@ -28,7 +28,7 @@ namespace JobScheduler.Core.Storage
                 job.Status = JobStatus.Processing;
                 job.StartedAt = DateTimeOffset.UtcNow;
                 job.AttemptCount++;
-                job.LastError = null;
+                job.LastErrorMessage = null;
             }
 
             return Task.CompletedTask;
@@ -50,7 +50,7 @@ namespace JobScheduler.Core.Storage
                 // release lock of worker
                 job.LockedBy = null;
                 job.LockedUntil = null;
-                job.LastError = null;
+                job.LastErrorMessage = null;
             }
 
             return Task.CompletedTask;
@@ -87,7 +87,7 @@ namespace JobScheduler.Core.Storage
             }
         }
 
-        public Task MarkRetryingAsync(Guid jobId, long lockToken, string error, DateTimeOffset nextRunAt, CancellationToken cancellationToken)
+        public Task MarkRetryingAsync(Guid jobId, long lockToken, Exception ex, DateTimeOffset nextRunAt, CancellationToken cancellationToken)
         {
             lock (_lock)
             {
@@ -99,7 +99,7 @@ namespace JobScheduler.Core.Storage
                 }
 
                 job.Status = JobStatus.Retrying;
-                job.LastError = error;
+                job.LastErrorMessage = ex.Message;
                 job.NextRunAt = nextRunAt;
                 // release lock of worker
                 job.LockedBy = null;
@@ -109,14 +109,14 @@ namespace JobScheduler.Core.Storage
             return Task.CompletedTask;
         }
 
-        public Task MarkFailedAsync(Guid jobId, long lockToken, string error, CancellationToken ct)
+        public Task MarkFailedAsync(Guid jobId, long lockToken, Exception ex, CancellationToken ct)
         {
             lock (_lock)
             {
                 var job = GetRequiredJob(jobId);
 
                 job.Status = JobStatus.Failed;
-                job.LastError = error;
+                job.LastErrorMessage = ex.Message;
                 job.CompletedAt = DateTimeOffset.UtcNow;
 
                 job.LockedBy = null;
@@ -143,7 +143,7 @@ namespace JobScheduler.Core.Storage
                 NextRunAt = job.NextRunAt,
                 StartedAt = job.StartedAt,
                 CompletedAt = job.CompletedAt,
-                LastError = job.LastError,
+                LastErrorMessage = job.LastErrorMessage,
                 LockedBy = job.LockedBy,
                 LockedUntil = job.LockedUntil,
                 LockToken = job.LockToken
