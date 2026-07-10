@@ -8,7 +8,7 @@ namespace JobScheduler.Abstractions.Jobs.Models
     (
         JobId Id,
         string JobType,
-        string Status,
+        JobStatus Status,
         int AttemptCount,
         int MaxAttempts,
         DateTimeOffset CreatedAt,

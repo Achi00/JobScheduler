@@ -115,10 +115,21 @@ namespace JobScheduler.Core.Storage
             {
                 var job = GetRequiredJob(jobId);
 
+                if (job.LockToken != lockToken)
+                {
+                    return Task.CompletedTask;
+                }
+
                 job.Status = JobStatus.Failed;
+
+                // internal error details
                 job.LastErrorMessage = ex.Message;
+                job.LastErrorType = ex.GetType().FullName;
+                job.LastErrorDetails = ex.ToString();
+
                 job.CompletedAt = DateTimeOffset.UtcNow;
 
+                // releasing locks
                 job.LockedBy = null;
                 job.LockedUntil = null;
 
