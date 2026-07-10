@@ -47,10 +47,17 @@ namespace JobScheduler.Core.Storage
 
                 job.Status = JobStatus.Succeeded;
                 job.CompletedAt = DateTimeOffset.UtcNow;
+                // JobRecord is one execution instance, will not run this exact job record if it succeeds, creates new one
+                job.NextRunAt = null;
+
                 // release lock of worker
                 job.LockedBy = null;
                 job.LockedUntil = null;
+
+                // internal error details
                 job.LastErrorMessage = null;
+                job.LastErrorType = null;
+                job.LastErrorDetails = null;
             }
 
             return Task.CompletedTask;
