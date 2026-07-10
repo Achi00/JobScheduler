@@ -117,7 +117,6 @@ namespace JobScheduler.Core.Storage
 
                 job.Status = JobStatus.Failed;
                 job.StartedAt = DateTimeOffset.UtcNow;
-                job.AttemptCount++;
                 job.LastError = null;
             }
 

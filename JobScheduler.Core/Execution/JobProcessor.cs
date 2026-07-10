@@ -64,18 +64,19 @@ namespace JobScheduler.Core.Execution
 
         private async Task HandleFailureAsync(JobRecord job, Exception ex, CancellationToken ct)
         {
-            var nextAttemptCount = job.AttemptCount + 1;
+            //var nextAttemptCount = job.AttemptCount + 1;
+            //var nextAttemptCount = job.AttemptCount;
 
-            if (nextAttemptCount > job.MaxAttempts)
+            if (job.AttemptCount >= job.MaxAttempts)
             {
                 await _jobStore.MarkFailedAsync(job.Id, job.LockToken, ex.ToString(), ct);
 
-                _logger.LogInformation("Job marked as failed after {AttemptCount} tryes", job.AttemptCount);
+                _logger.LogInformation("Job {JobId} marked as failed after {AttemptCount} tryes", job.Id, job.AttemptCount);
 
                 return;
             }
 
-            var delay = GetRetryDelay(nextAttemptCount);
+            var delay = GetRetryDelay(job.AttemptCount);
 
             await _jobStore.MarkRetryingAsync(job.Id, job.LockToken, ex.ToString(), DateTimeOffset.UtcNow.Add(delay), ct);
         }
@@ -84,10 +85,15 @@ namespace JobScheduler.Core.Execution
         {
             return attemptCount switch
             {
-                1 => TimeSpan.FromSeconds(10),
-                2 => TimeSpan.FromMinutes(1),
-                3 => TimeSpan.FromMinutes(5),
-                _ => TimeSpan.FromMinutes(15)
+                // testing
+                1 => TimeSpan.FromSeconds(5),
+                2 => TimeSpan.FromSeconds(5),
+                3 => TimeSpan.FromSeconds(5),
+                _ => TimeSpan.FromSeconds(5)
+                //1 => TimeSpan.FromSeconds(10),
+                //2 => TimeSpan.FromMinutes(1),
+                //3 => TimeSpan.FromMinutes(5),
+                //_ => TimeSpan.FromMinutes(15)
             };
         }
     }
