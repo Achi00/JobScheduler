@@ -3,6 +3,7 @@ using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Registry;
 using JobScheduler.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace JobScheduler.Core.Execution
 {
@@ -14,18 +15,19 @@ namespace JobScheduler.Core.Execution
         private readonly IJobStore _jobStore;
         private readonly JobRegistry _jobRegistry;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger<JobProcessor> _logger;
 
-        public JobProcessor(IJobStore jobStore, JobRegistry jobRegistry, IServiceScopeFactory scopeFactory)
+        public JobProcessor(IJobStore jobStore, JobRegistry jobRegistry, IServiceScopeFactory scopeFactory, ILogger<JobProcessor> logger)
         {
             _jobStore = jobStore;
             _jobRegistry = jobRegistry;
             _scopeFactory = scopeFactory;
+            _logger = logger;
         }
 
         public async Task<bool> TryProcessOneAsync(string workerId, TimeSpan duration, CancellationToken ct)
         {
             // TryClaimNextRunnableJobAsync mark's job as processing state
-
             var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, duration, ct);
 
             if (job is null)
@@ -64,9 +66,11 @@ namespace JobScheduler.Core.Execution
         {
             var nextAttemptCount = job.AttemptCount + 1;
 
-            if (nextAttemptCount >= job.MaxAttempts)
+            if (nextAttemptCount > job.MaxAttempts)
             {
                 await _jobStore.MarkFailedAsync(job.Id, job.LockToken, ex.ToString(), ct);
+
+                _logger.LogInformation("Job marked as failed after {AttemptCount} tryes", job.AttemptCount);
 
                 return;
             }
