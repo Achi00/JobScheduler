@@ -116,8 +116,13 @@ namespace JobScheduler.Core.Storage
                 var job = GetRequiredJob(jobId);
 
                 job.Status = JobStatus.Failed;
-                job.StartedAt = DateTimeOffset.UtcNow;
-                job.LastError = null;
+                job.LastError = error;
+                job.CompletedAt = DateTimeOffset.UtcNow;
+
+                job.LockedBy = null;
+                job.LockedUntil = null;
+
+                job.NextRunAt = null;
             }
 
             return Task.CompletedTask;
