@@ -11,7 +11,7 @@ namespace JobScheduler.Core.Mappers
             return new JobInfo(
                 Id: JobId.FromGuid(record.Id),
                 JobType: record.JobType,
-                Status: record.Status,
+                Status: record.Status.ToString(),
                 AttemptCount: record.AttemptCount,
                 MaxAttempts: record.MaxAttempts,
                 CreatedAt: record.CreatedAt,
