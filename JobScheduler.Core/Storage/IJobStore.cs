@@ -12,8 +12,8 @@ namespace JobScheduler.Core.Storage
 
         Task<bool> MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken cancellationToken);
 
-        Task MarkFailedAsync(Guid jobId, long lockToken, JobError error, CancellationToken cancellationToken);
+        Task<bool> MarkFailedAsync(Guid jobId, long lockToken, JobError error, CancellationToken cancellationToken);
 
-        Task MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset nextRunAt, CancellationToken cancellationToken);
+        Task<bool> MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset nextRunAt, CancellationToken cancellationToken);
     }
 }

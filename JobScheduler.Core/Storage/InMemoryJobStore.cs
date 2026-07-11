@@ -95,7 +95,7 @@ namespace JobScheduler.Core.Storage
             }
         }
 
-        public Task MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset nextRunAt, CancellationToken cancellationToken)
+        public Task<bool> MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset nextRunAt, CancellationToken cancellationToken)
         {
             lock (_lock)
             {
@@ -103,7 +103,7 @@ namespace JobScheduler.Core.Storage
 
                 if (job.LockToken != lockToken)
                 {
-                    return Task.CompletedTask;
+                    return Task.FromResult(false);
                 }
 
                 job.Status = JobStatus.Retrying;
@@ -114,15 +114,19 @@ namespace JobScheduler.Core.Storage
                 job.LastErrorDetails = error.Details;
 
                 job.NextRunAt = nextRunAt;
+
+                // if retrying, it has not completed job yet
+                job.CompletedAt = null;
+
                 // release lock of worker
                 job.LockedBy = null;
                 job.LockedUntil = null;
             }
 
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
-        public Task MarkFailedAsync(Guid jobId, long lockToken, JobError error, CancellationToken ct)
+        public Task<bool> MarkFailedAsync(Guid jobId, long lockToken, JobError error, CancellationToken ct)
         {
             lock (_lock)
             {
@@ -130,7 +134,7 @@ namespace JobScheduler.Core.Storage
 
                 if (job.LockToken != lockToken)
                 {
-                    return Task.CompletedTask;
+                    return Task.FromResult(false);
                 }
 
                 job.Status = JobStatus.Failed;
@@ -149,7 +153,7 @@ namespace JobScheduler.Core.Storage
                 job.NextRunAt = null;
             }
 
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         // using clone only because we work in memory and donw want to use same object reference
