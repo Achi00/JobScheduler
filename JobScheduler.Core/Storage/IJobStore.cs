@@ -1,4 +1,6 @@
-﻿namespace JobScheduler.Core.Storage
+﻿using JobScheduler.Core.Errors;
+
+namespace JobScheduler.Core.Storage
 {
     internal interface IJobStore
     {
@@ -8,10 +10,10 @@
 
         Task<JobRecord?> TryClaimNextRunnableJobAsync(string workerId, TimeSpan lockDuration, CancellationToken cancellationToken);
 
-        Task MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken cancellationToken);
+        Task<bool> MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken cancellationToken);
 
-        Task MarkFailedAsync(Guid jobId, long lockToken, Exception ex, CancellationToken cancellationToken);
+        Task MarkFailedAsync(Guid jobId, long lockToken, JobError error, CancellationToken cancellationToken);
 
-        Task MarkRetryingAsync(Guid jobId, long lockToken, Exception ex, DateTimeOffset nextRunAt, CancellationToken cancellationToken);
+        Task MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset nextRunAt, CancellationToken cancellationToken);
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace JobScheduler.Core
+﻿namespace JobScheduler.Core.Errors
 {
     internal sealed record JobError(string Message, string Type, string Details)
     {
