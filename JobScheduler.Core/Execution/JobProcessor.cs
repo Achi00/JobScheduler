@@ -1,5 +1,6 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
 using JobScheduler.Abstractions.Jobs.Structs;
+using JobScheduler.Core.Errors;
 using JobScheduler.Core.Registry;
 using JobScheduler.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,7 +53,12 @@ namespace JobScheduler.Core.Execution
 
                 await executor.ExecuteAsync(scope.ServiceProvider, job.PayloadJson, context, ct);
 
-                await _jobStore.MarkSucceededAsync(job.Id, job.LockToken, ct);
+                var succeeded = await _jobStore.MarkSucceededAsync(job.Id, job.LockToken, ct);
+
+                if (!succeeded)
+                {
+                    _logger.LogWarning("Job {JobId} was not marked as succeeded because lock token did not match.", job.Id);
+                }
             }
             catch (Exception ex)
             {
@@ -66,10 +72,12 @@ namespace JobScheduler.Core.Execution
         {
             //var nextAttemptCount = job.AttemptCount + 1;
             //var nextAttemptCount = job.AttemptCount;
+            var error = JobError.FromException(ex);
 
             if (job.AttemptCount >= job.MaxAttempts)
             {
-                await _jobStore.MarkFailedAsync(job.Id, job.LockToken, ex, ct);
+
+                await _jobStore.MarkFailedAsync(job.Id, job.LockToken, error, ct);
 
                 _logger.LogInformation("Job {JobId} marked as failed after {AttemptCount} tryes", job.Id, job.AttemptCount);
 
@@ -78,7 +86,7 @@ namespace JobScheduler.Core.Execution
 
             var delay = GetRetryDelay(job.AttemptCount);
 
-            await _jobStore.MarkRetryingAsync(job.Id, job.LockToken, ex, DateTimeOffset.UtcNow.Add(delay), ct);
+            await _jobStore.MarkRetryingAsync(job.Id, job.LockToken, error, DateTimeOffset.UtcNow.Add(delay), ct);
         }
 
         private static TimeSpan GetRetryDelay(int attemptCount)
