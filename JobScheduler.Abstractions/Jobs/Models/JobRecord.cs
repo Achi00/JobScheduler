@@ -11,7 +11,7 @@ namespace JobScheduler.Abstractions.Models
         public int AttemptCount { get; set; }
         public int MaxAttempts { get; set; } = 3;
         public DateTimeOffset CreatedAt { get; set; }
-        public DateTimeOffset? NextRunAt { get; set; }
+        public DateTimeOffset? AvailableAt { get; set; }
         public DateTimeOffset? StartedAt { get; set; }
         public DateTimeOffset? CompletedAt { get; set; }
         public DateTimeOffset? LockedUntil { get; set; }

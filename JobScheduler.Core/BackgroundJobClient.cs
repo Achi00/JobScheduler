@@ -26,7 +26,7 @@ namespace JobScheduler.Core
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = JobStatus.Enqueued,
                 CreatedAt = DateTimeOffset.UtcNow,
-                NextRunAt = null
+                AvailableAt = null
             };
             await _jobStore.CreateAsync(job, cancellationToken);
 
@@ -45,7 +45,7 @@ namespace JobScheduler.Core
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = JobStatus.Scheduled,
                 CreatedAt = DateTimeOffset.UtcNow,
-                NextRunAt = null
+                AvailableAt = null
             };
 
             await _jobStore.CreateAsync(job, cancellationToken);

@@ -49,7 +49,7 @@ namespace JobScheduler.Core.Storage
                 job.Status = JobStatus.Succeeded;
                 job.CompletedAt = DateTimeOffset.UtcNow;
                 // JobRecord is one execution instance, will not run this exact job record if it succeeds, creates new one
-                job.NextRunAt = null;
+                job.AvailableAt = null;
 
                 // release lock of worker
                 job.LockedBy = null;
@@ -74,8 +74,8 @@ namespace JobScheduler.Core.Storage
                 var job = _jobs
                     .Where(j =>
                         (j.Status is JobStatus.Enqueued or JobStatus.Scheduled or JobStatus.Retrying) &&
-                        (j.NextRunAt is null || j.NextRunAt <= now))
-                    .OrderBy(j => j.NextRunAt ?? j.CreatedAt)
+                        (j.AvailableAt is null || j.AvailableAt <= now))
+                    .OrderBy(j => j.AvailableAt ?? j.CreatedAt)
                     .FirstOrDefault();
 
                 if (job is null)
@@ -113,7 +113,7 @@ namespace JobScheduler.Core.Storage
                 job.LastErrorType = error.Type;
                 job.LastErrorDetails = error.Details;
 
-                job.NextRunAt = nextRunAt;
+                job.AvailableAt = nextRunAt;
 
                 // if retrying, it has not completed job yet
                 job.CompletedAt = null;
@@ -150,7 +150,7 @@ namespace JobScheduler.Core.Storage
                 job.LockedBy = null;
                 job.LockedUntil = null;
 
-                job.NextRunAt = null;
+                job.AvailableAt = null;
             }
 
             return Task.FromResult(true);
@@ -168,7 +168,7 @@ namespace JobScheduler.Core.Storage
                 AttemptCount = job.AttemptCount,
                 MaxAttempts = job.MaxAttempts,
                 CreatedAt = job.CreatedAt,
-                NextRunAt = job.NextRunAt,
+                AvailableAt = job.AvailableAt,
                 StartedAt = job.StartedAt,
                 CompletedAt = job.CompletedAt,
                 LastErrorMessage = job.LastErrorMessage,

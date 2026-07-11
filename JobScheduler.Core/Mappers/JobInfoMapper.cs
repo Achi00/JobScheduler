@@ -15,7 +15,7 @@ namespace JobScheduler.Core.Mappers
                 AttemptCount: record.AttemptCount,
                 MaxAttempts: record.MaxAttempts,
                 CreatedAt: record.CreatedAt,
-                NextRunAt: record.NextRunAt,
+                AvailableAt: record.AvailableAt,
                 StartedAt: record.StartedAt,
                 CompletedAt: record.CompletedAt,
                 LastError: record.LastErrorMessage);

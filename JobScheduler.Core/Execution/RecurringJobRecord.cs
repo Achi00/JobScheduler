@@ -9,6 +9,6 @@
         public string JobType { get; set; } = default!;
         public string PayloadJson { get; set; } = default!;
         public string CronExpression { get; set; } = default!;
-        public DateTimeOffset? NextRunAt { get; set; }
+        public DateTimeOffset? AvailableAt { get; set; }
     }
 }

@@ -56,5 +56,19 @@ namespace JobScheduler.Client.Controllers
 
             return Accepted(new { JobId = jobId });
         }
+
+        [HttpPost("send-email/scheduled")]
+        public async Task<IActionResult> ScheduleEmail(IBackgroundJobClient jobs, CancellationToken ct)
+        {
+            var jobId = await jobs.ScheduleAsync(
+                new SendEmailJob(Guid.NewGuid(), "scheduled-welcome"),
+                DateTimeOffset.UtcNow.AddSeconds(20),
+                ct);
+
+            return Accepted(new
+            {
+                JobId = jobId
+            });
+        }
     }
 }

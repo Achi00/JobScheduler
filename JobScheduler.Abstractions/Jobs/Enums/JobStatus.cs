@@ -8,7 +8,7 @@
         Succeeded = 3,
         // exhausted all retries
         Failed = 4,
-        // one off job, deliberately delayed (executed based on NextRunAt in future)
+        // one off job, deliberately delayed (executed based on AvailableAt in future)
         Scheduled = 5,
         // failed at leadt once, waiting backoff, will be retried
         Retrying = 6,
