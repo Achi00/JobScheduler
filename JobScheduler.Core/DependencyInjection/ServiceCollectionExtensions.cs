@@ -1,6 +1,7 @@
 ﻿using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Core.Execution;
 using JobScheduler.Core.HostedServices;
+using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
 using JobScheduler.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,12 +10,19 @@ namespace JobScheduler.Core.DependencyInjection
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddJobSchedulerCore(this IServiceCollection services)
+        public static IServiceCollection AddJobSchedulerCore(this IServiceCollection services, Action<JobSchedulerOptions>? configure = null)
         {
+            var options = new JobSchedulerOptions();
+
+            configure?.Invoke(options);
+
+            services.AddSingleton(options);
+
             services.AddSingleton<IJobStore, InMemoryJobStore>();
             services.AddSingleton<JobRegistry>();
 
             services.AddScoped<IBackgroundJobClient, BackgroundJobClient>();
+            services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
             services.AddScoped<JobProcessor>();
 
             services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
