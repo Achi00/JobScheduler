@@ -42,7 +42,7 @@ namespace JobScheduler.Core.HostedServices
 
                     if (!processed)
                     {
-                        await Task.Delay(_options.PollingInterval, stoppingToken);
+                        await Task.Delay(_options.CurrentValue.PollingInterval, stoppingToken);
                     }
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -52,7 +52,7 @@ namespace JobScheduler.Core.HostedServices
                 {
                     _logger.LogError(ex, "Job worker {WorkedId} failed", _workerId);
 
-                    await Task.Delay(_options.PollingInterval, stoppingToken);
+                    await Task.Delay(_options.CurrentValue.PollingInterval, stoppingToken);
                 }
             }
 
