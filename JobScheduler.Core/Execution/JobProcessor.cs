@@ -6,6 +6,7 @@ using JobScheduler.Core.Registry;
 using JobScheduler.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace JobScheduler.Core.Execution
 {
@@ -24,13 +25,13 @@ namespace JobScheduler.Core.Execution
             IJobStore jobStore, 
             JobRegistry jobRegistry, 
             IServiceScopeFactory scopeFactory,
-            JobSchedulerOptions options,
+            IOptions<JobSchedulerOptions> options,
             ILogger<JobProcessor> logger)
         {
             _jobStore = jobStore;
             _jobRegistry = jobRegistry;
             _scopeFactory = scopeFactory;
-            _options = options;
+            _options = options.Value;
             _logger = logger;
         }
 

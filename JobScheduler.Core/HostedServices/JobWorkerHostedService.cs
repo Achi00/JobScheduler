@@ -3,6 +3,7 @@ using JobScheduler.Core.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace JobScheduler.Core.HostedServices
 {
@@ -16,11 +17,11 @@ namespace JobScheduler.Core.HostedServices
 
         public JobWorkerHostedService(
             IServiceScopeFactory scopeFactory,
-            JobSchedulerOptions options,
+            IOptions<JobSchedulerOptions> options,
             ILogger<JobWorkerHostedService> logger)
         {
             _scopeFactory = scopeFactory;
-            _options = options;
+            _options = options.Value;
             _logger = logger;
         }
 
