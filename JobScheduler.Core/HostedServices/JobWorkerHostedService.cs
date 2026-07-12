@@ -1,4 +1,5 @@
-﻿using JobScheduler.Core.Execution;
+﻿using JobScheduler.Core.Enums;
+using JobScheduler.Core.Execution;
 using JobScheduler.Core.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -38,11 +39,13 @@ namespace JobScheduler.Core.HostedServices
 
                     var processor = scope.ServiceProvider.GetRequiredService<JobProcessor>();
 
-                    var processed = await processor.TryProcessOneAsync(_workerId, stoppingToken);
+                    var result = await processor.TryProcessOneAsync(_workerId, stoppingToken);
 
-                    if (!processed)
+                    if (result == JobProcessResult.NoJobAvailable)
                     {
-                        await Task.Delay(_options.CurrentValue.PollingInterval, stoppingToken);
+                        await Task.Delay(
+                            _options.CurrentValue.PollingInterval,
+                            stoppingToken);
                     }
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

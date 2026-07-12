@@ -1,5 +1,6 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
 using JobScheduler.Abstractions.Jobs.Structs;
+using JobScheduler.Core.Enums;
 using JobScheduler.Core.Errors;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
@@ -35,14 +36,14 @@ namespace JobScheduler.Core.Execution
             _logger = logger;
         }
 
-        public async Task<bool> TryProcessOneAsync(string workerId, CancellationToken ct)
+        public async Task<JobProcessResult> TryProcessOneAsync(string workerId, CancellationToken ct)
         {
             // TryClaimNextRunnableJobAsync mark's job as processing state
             var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, _options.LockDuration, ct);
 
             if (job is null)
             {
-                return false;
+                return JobProcessResult.NoJobAvailable;
             }
 
             await using var scope = _scopeFactory.CreateAsyncScope();
@@ -69,52 +70,163 @@ namespace JobScheduler.Core.Execution
 
                 await executor.ExecuteAsync(scope.ServiceProvider, job.PayloadJson, context, ct);
 
-                var markSucceeded = await _jobStore.MarkSucceededAsync(job.Id, job.LockToken, ct);
+                var result = await _jobStore.MarkSucceededAsync(job.Id, job.LockToken, ct);
 
-                
-
-                return true;
+                return HandleSucceededTransitionResult(job, result);
             }
             catch (Exception ex)
             {
-                await HandleFailureAsync(job, ex, ct);
+                return await HandleFailureAsync(job, ex, ct);
             }
-
-            return true;
         }
 
-        private async Task HandleFailureAsync(JobRecord job, Exception ex, CancellationToken ct)
+        // TODO: do all private methods more organized way!!!!
+        private async Task<JobProcessResult> HandleFailureAsync(JobRecord job, Exception ex, CancellationToken ct)
         {
             var error = JobError.FromException(ex);
 
             if (job.AttemptCount >= job.MaxAttempts)
             {
-
-                var markedFailure = await _jobStore.MarkFailedAsync(job.Id, job.LockToken, error, ct);
-
+                var result = await _jobStore.MarkFailedAsync(job.Id, job.LockToken, error, ct);
                 
-                _logger.LogInformation
-                (
-                    "Job {JobId} marked as failed after {AttemptCount} attempts", 
-                    job.Id, 
-                    job.AttemptCount
-                );
-                
-                return;
+                return HandleFailedTransitionResult(job, result);
             }
 
             var delay = GetRetryDelay(job.AttemptCount);
+            var availableAt = DateTimeOffset.UtcNow.Add(delay);
 
-            var markedRetry = await _jobStore.MarkRetryingAsync(job.Id, job.LockToken, error, DateTimeOffset.UtcNow.Add(delay), ct);
+            var retryResult = await _jobStore
+                .MarkRetryingAsync(
+                    job.Id, 
+                    job.LockToken, 
+                    error, 
+                    DateTimeOffset.UtcNow.Add(delay), 
+                    ct
+                );
 
-            
-            _logger.LogWarning
-            (
-                "Job {JobId} was marked as Retrying", 
-                job.Id
-            );
+            return HandleRetryTransitionResult(job, retryResult, availableAt);
+        }
 
-            return;
+        private JobProcessResult HandleSucceededTransitionResult(
+            JobRecord job,
+            JobStateChangeResult result)
+        {
+            switch (result)
+            {
+                case JobStateChangeResult.Applied:
+                    _logger.LogInformation(
+                        "Job {JobId} completed successfully.",
+                        job.Id);
+
+                    return JobProcessResult.Succeeded;
+
+                case JobStateChangeResult.LockTokenMismatch:
+                    _logger.LogWarning(
+                        "Job {JobId} executed successfully, but this worker no longer owns it. Success state update skipped.",
+                        job.Id);
+
+                    return JobProcessResult.LostOwnership;
+
+                case JobStateChangeResult.NotFound:
+                    _logger.LogWarning(
+                        "Job {JobId} executed successfully, but the job record no longer exists.",
+                        job.Id);
+
+                    return JobProcessResult.StateChangeFailed;
+
+                case JobStateChangeResult.InvalidState:
+                    _logger.LogWarning(
+                        "Job {JobId} executed successfully, but it was not in Processing state when marking succeeded.",
+                        job.Id);
+
+                    return JobProcessResult.StateChangeFailed;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(result), result, null);
+            }
+        }
+
+        private JobProcessResult HandleRetryTransitionResult(
+            JobRecord job,
+            JobStateChangeResult result,
+            DateTimeOffset availableAt)
+        {
+            switch (result)
+            {
+                case JobStateChangeResult.Applied:
+                    _logger.LogWarning(
+                        "Job {JobId} failed on attempt {Attempt}/{MaxAttempts}. Retrying at {AvailableAt}.",
+                        job.Id,
+                        job.AttemptCount,
+                        job.MaxAttempts,
+                        availableAt);
+
+                    return JobProcessResult.ScheduledRetry;
+
+                case JobStateChangeResult.LockTokenMismatch:
+                    _logger.LogWarning(
+                        "Job {JobId} execution failed, but this worker no longer owns it. Retry state update skipped.",
+                        job.Id);
+
+                    return JobProcessResult.LostOwnership;
+
+                case JobStateChangeResult.NotFound:
+                    _logger.LogWarning(
+                        "Job {JobId} execution failed, but the job record no longer exists.",
+                        job.Id);
+
+                    return JobProcessResult.StateChangeFailed;
+
+                case JobStateChangeResult.InvalidState:
+                    _logger.LogWarning(
+                        "Job {JobId} execution failed, but it was not in Processing state when marking retrying.",
+                        job.Id);
+
+                    return JobProcessResult.StateChangeFailed;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(result), result, null);
+            }
+        }
+
+        private JobProcessResult HandleFailedTransitionResult(
+            JobRecord job,
+            JobStateChangeResult result)
+        {
+            switch (result)
+            {
+                case JobStateChangeResult.Applied:
+                    _logger.LogInformation(
+                        "Job {JobId} marked as failed after {AttemptCount} attempts.",
+                        job.Id,
+                        job.AttemptCount);
+
+                    return JobProcessResult.FailedPermanently;
+
+                case JobStateChangeResult.LockTokenMismatch:
+                    _logger.LogWarning(
+                        "Job {JobId} reached max attempts, but this worker no longer owns it. Failed state update skipped.",
+                        job.Id);
+
+                    return JobProcessResult.LostOwnership;
+
+                case JobStateChangeResult.NotFound:
+                    _logger.LogWarning(
+                        "Job {JobId} reached max attempts, but the job record no longer exists.",
+                        job.Id);
+
+                    return JobProcessResult.StateChangeFailed;
+
+                case JobStateChangeResult.InvalidState:
+                    _logger.LogWarning(
+                        "Job {JobId} reached max attempts, but it was not in Processing state when marking failed.",
+                        job.Id);
+
+                    return JobProcessResult.StateChangeFailed;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(result), result, null);
+            }
         }
 
         private static TimeSpan GetRetryDelay(int attemptCount)
