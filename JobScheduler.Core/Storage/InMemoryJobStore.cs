@@ -1,4 +1,5 @@
 ﻿using JobScheduler.Abstractions.Jobs.Enums;
+using JobScheduler.Core.Enums;
 using JobScheduler.Core.Errors;
 
 namespace JobScheduler.Core.Storage
@@ -35,15 +36,25 @@ namespace JobScheduler.Core.Storage
             return Task.CompletedTask;
         }
 
-        public Task<bool> MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken ct)
+        public Task<JobStateChangeResult> MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken ct)
         {
             lock (_lock)
             {
                 var job = GetRequiredJob(jobId);
 
+                if (job is null)
+                {
+                    return Task.FromResult(JobStateChangeResult.NotFound);
+                }
+
                 if (job.LockToken != lockToken)
                 {
-                    return Task.FromResult(false);
+                    return Task.FromResult(JobStateChangeResult.LockTokenMismatch);
+                }
+
+                if (job.Status != JobStatus.Processing)
+                {
+                    return Task.FromResult(JobStateChangeResult.InvalidState);
                 }
 
                 job.Status = JobStatus.Succeeded;
@@ -61,7 +72,7 @@ namespace JobScheduler.Core.Storage
                 job.LastErrorDetails = null;
             }
 
-            return Task.FromResult(true);
+            return Task.FromResult(JobStateChangeResult.Applied);
         }
 
         // claim job to specific worker and mark as processing
@@ -96,15 +107,20 @@ namespace JobScheduler.Core.Storage
             }
         }
 
-        public Task<bool> MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset availableAt, CancellationToken cancellationToken)
+        public Task<JobStateChangeResult> MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset availableAt, CancellationToken cancellationToken)
         {
             lock (_lock)
             {
                 var job = GetRequiredJob(jobId);
 
+                if (job is null)
+                {
+                    return Task.FromResult(JobStateChangeResult.NotFound);
+                }
+
                 if (job.LockToken != lockToken)
                 {
-                    return Task.FromResult(false);
+                    return Task.FromResult(JobStateChangeResult.NotFound);
                 }
 
                 job.Status = JobStatus.Retrying;
@@ -124,18 +140,23 @@ namespace JobScheduler.Core.Storage
                 job.LockedUntil = null;
             }
 
-            return Task.FromResult(true);
+            return Task.FromResult(JobStateChangeResult.Applied);
         }
 
-        public Task<bool> MarkFailedAsync(Guid jobId, long lockToken, JobError error, CancellationToken ct)
+        public Task<JobStateChangeResult> MarkFailedAsync(Guid jobId, long lockToken, JobError error, CancellationToken ct)
         {
             lock (_lock)
             {
                 var job = GetRequiredJob(jobId);
 
+                if (job is null)
+                {
+                    return Task.FromResult(JobStateChangeResult.NotFound);
+                }
+
                 if (job.LockToken != lockToken)
                 {
-                    return Task.FromResult(false);
+                    return Task.FromResult(JobStateChangeResult.NotFound);
                 }
 
                 job.Status = JobStatus.Failed;
@@ -154,7 +175,7 @@ namespace JobScheduler.Core.Storage
                 job.AvailableAt = null;
             }
 
-            return Task.FromResult(true);
+            return Task.FromResult(JobStateChangeResult.Applied);
         }
 
         // using clone only because we work in memory and donw want to use same object reference

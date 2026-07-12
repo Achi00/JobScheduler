@@ -59,26 +59,26 @@ namespace JobScheduler.Core.Execution
             try
             {
                 var executor = _jobRegistry.GetExecutor(job.JobType);
+                
+                _logger.LogInformation(
+                    "Starting job {JobId} of type {JobType}, attempt {Attempt}",
+                    job.Id, 
+                    job.JobType, 
+                    job.AttemptCount
+                );
 
                 await executor.ExecuteAsync(scope.ServiceProvider, job.PayloadJson, context, ct);
 
-                _logger.LogInformation("Starting job {JobId} of type {JobType}, attempt {Attempt}", job.Id, job.JobType, job.AttemptCount);
+                var markSucceeded = await _jobStore.MarkSucceededAsync(job.Id, job.LockToken, ct);
 
-                var succeeded = await _jobStore.MarkSucceededAsync(job.Id, job.LockToken, ct);
+                
 
-                if (!succeeded)
-                {
-                    _logger.LogWarning("Job {JobId} was not marked as succeeded because lock token did not match", job.Id);
-                    return false;
-                }
+                return true;
             }
             catch (Exception ex)
             {
                 await HandleFailureAsync(job, ex, ct);
             }
-
-            _logger.LogInformation("Job {JobId} completed successfully", job.Id);
-
 
             return true;
         }
@@ -92,19 +92,10 @@ namespace JobScheduler.Core.Execution
 
                 var markedFailure = await _jobStore.MarkFailedAsync(job.Id, job.LockToken, error, ct);
 
-                if (!markedFailure)
-                {
-                    _logger.LogWarning
-                    (
-                        "Job {JobId} was not marked failed because lock token did not match", 
-                        job.Id
-                    );
-                    return;
-                }
                 
                 _logger.LogInformation
                 (
-                    "Job {JobId} marked as failed after {AttemptCount} tryes", 
+                    "Job {JobId} marked as failed after {AttemptCount} attempts", 
                     job.Id, 
                     job.AttemptCount
                 );
@@ -116,16 +107,6 @@ namespace JobScheduler.Core.Execution
 
             var markedRetry = await _jobStore.MarkRetryingAsync(job.Id, job.LockToken, error, DateTimeOffset.UtcNow.Add(delay), ct);
 
-            if (!markedRetry)
-            {
-                _logger.LogWarning
-                (
-                    "Job {JobId} was not marked Retrying because lock token did not match", 
-                    job.Id
-                );
-
-                return;
-            }
             
             _logger.LogWarning
             (

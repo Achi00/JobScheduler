@@ -24,6 +24,7 @@ namespace JobScheduler.Core.DependencyInjection
                 optionsBuilder.Configure(configure);
             }
 
+            // validates and fails on app's startup, not when service first asks for them
             optionsBuilder
             .Validate(options => options.PollingInterval > TimeSpan.Zero,
                 "PollingInterval must be greater than zero.")
