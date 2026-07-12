@@ -73,6 +73,7 @@ namespace JobScheduler.Core.Storage
 
                 var job = _jobs
                     .Where(j =>
+                        // only check runnalbe status jobs
                         (j.Status is JobStatus.Enqueued or JobStatus.Scheduled or JobStatus.Retrying) &&
                         (j.AvailableAt is null || j.AvailableAt <= now))
                     .OrderBy(j => j.AvailableAt ?? j.CreatedAt)
@@ -95,7 +96,7 @@ namespace JobScheduler.Core.Storage
             }
         }
 
-        public Task<bool> MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset nextRunAt, CancellationToken cancellationToken)
+        public Task<bool> MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset availableAt, CancellationToken cancellationToken)
         {
             lock (_lock)
             {
@@ -113,7 +114,7 @@ namespace JobScheduler.Core.Storage
                 job.LastErrorType = error.Type;
                 job.LastErrorDetails = error.Details;
 
-                job.AvailableAt = nextRunAt;
+                job.AvailableAt = availableAt;
 
                 // if retrying, it has not completed job yet
                 job.CompletedAt = null;

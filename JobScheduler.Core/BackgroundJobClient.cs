@@ -26,7 +26,10 @@ namespace JobScheduler.Core
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = JobStatus.Enqueued,
                 CreatedAt = DateTimeOffset.UtcNow,
-                AvailableAt = null
+                // if AvailableAt is null, means runnable immediately
+                AvailableAt = null,
+                AttemptCount = 0,
+                MaxAttempts = 3
             };
             await _jobStore.CreateAsync(job, cancellationToken);
 

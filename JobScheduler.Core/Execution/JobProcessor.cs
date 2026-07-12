@@ -53,11 +53,17 @@ namespace JobScheduler.Core.Execution
 
                 await executor.ExecuteAsync(scope.ServiceProvider, job.PayloadJson, context, ct);
 
+                _logger.LogInformation("Starting job {JobId} of type {JobType}, attempt {Attempt}", job.Id, job.JobType, job.AttemptCount);
+
                 var succeeded = await _jobStore.MarkSucceededAsync(job.Id, job.LockToken, ct);
 
                 if (!succeeded)
                 {
-                    _logger.LogWarning("Job {JobId} was not marked as succeeded because lock token did not match.", job.Id);
+                    _logger.LogWarning("Job {JobId} was not marked as succeeded because lock token did not match", job.Id);
+                }
+                else
+                {
+                    _logger.LogInformation("Job {JobId} completed successfully", job.Id);
                 }
             }
             catch (Exception ex)
@@ -70,8 +76,6 @@ namespace JobScheduler.Core.Execution
 
         private async Task HandleFailureAsync(JobRecord job, Exception ex, CancellationToken ct)
         {
-            //var nextAttemptCount = job.AttemptCount + 1;
-            //var nextAttemptCount = job.AttemptCount;
             var error = JobError.FromException(ex);
 
             if (job.AttemptCount >= job.MaxAttempts)
@@ -81,7 +85,7 @@ namespace JobScheduler.Core.Execution
 
                 if (!markedFailure)
                 {
-                    _logger.LogWarning("Job {JobId} was not marked failed because lock token did not match.", job.Id);
+                    _logger.LogWarning("Job {JobId} was not marked failed because lock token did not match", job.Id);
                 }
 
                 _logger.LogInformation("Job {JobId} marked as failed after {AttemptCount} tryes", job.Id, job.AttemptCount);
@@ -95,7 +99,7 @@ namespace JobScheduler.Core.Execution
 
             if (!markedRetry)
             {
-                _logger.LogWarning("Job {JobId} was not marked Retrying because lock token did not match.", job.Id);
+                _logger.LogWarning("Job {JobId} was not marked Retrying because lock token did not match", job.Id);
             }
         }
 
@@ -107,7 +111,7 @@ namespace JobScheduler.Core.Execution
                 1 => TimeSpan.FromSeconds(5),
                 2 => TimeSpan.FromSeconds(5),
                 3 => TimeSpan.FromSeconds(5),
-                _ => TimeSpan.FromSeconds(5)
+                _ => TimeSpan.FromSeconds(5) 
                 //1 => TimeSpan.FromSeconds(10),
                 //2 => TimeSpan.FromMinutes(1),
                 //3 => TimeSpan.FromMinutes(5),
