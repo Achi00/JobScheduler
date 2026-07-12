@@ -71,15 +71,14 @@ namespace JobScheduler.Core.Execution
                     _logger.LogWarning("Job {JobId} was not marked as succeeded because lock token did not match", job.Id);
                     return false;
                 }
-                else
-                {
-                    _logger.LogInformation("Job {JobId} completed successfully", job.Id);
-                }
             }
             catch (Exception ex)
             {
                 await HandleFailureAsync(job, ex, ct);
             }
+
+            _logger.LogInformation("Job {JobId} completed successfully", job.Id);
+
 
             return true;
         }
@@ -124,15 +123,17 @@ namespace JobScheduler.Core.Execution
                     "Job {JobId} was not marked Retrying because lock token did not match", 
                     job.Id
                 );
+
+                return;
             }
-            else
-            {
-                _logger.LogWarning
-                (
-                    "Job {JobId} was marked as Retrying", 
-                    job.Id
-                );
-            }
+            
+            _logger.LogWarning
+            (
+                "Job {JobId} was marked as Retrying", 
+                job.Id
+            );
+
+            return;
         }
 
         private static TimeSpan GetRetryDelay(int attemptCount)

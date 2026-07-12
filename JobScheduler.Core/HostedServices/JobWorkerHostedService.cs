@@ -11,17 +11,18 @@ namespace JobScheduler.Core.HostedServices
     internal sealed class JobWorkerHostedService : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
-        private readonly JobSchedulerOptions _options;
+        // using IOptionsMonitor for live config update, this service is always singleton, otherwise IOptions
+        private readonly IOptionsMonitor<JobSchedulerOptions> _options;
         private readonly ILogger<JobWorkerHostedService> _logger;
         private readonly string _workerId = $"{Environment.MachineName}-{Guid.NewGuid():N}";
 
         public JobWorkerHostedService(
             IServiceScopeFactory scopeFactory,
-            IOptions<JobSchedulerOptions> options,
+            IOptionsMonitor<JobSchedulerOptions> options,
             ILogger<JobWorkerHostedService> logger)
         {
             _scopeFactory = scopeFactory;
-            _options = options.Value;
+            _options = options;
             _logger = logger;
         }
 
