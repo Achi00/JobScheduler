@@ -36,7 +36,7 @@ namespace JobScheduler.Core.HostedServices
 
                     var processor = scope.ServiceProvider.GetRequiredService<JobProcessor>();
 
-                    var processed = await processor.TryProcessOneAsync(_workerId, TimeSpan.FromSeconds(5), stoppingToken);
+                    var processed = await processor.TryProcessOneAsync(_workerId, stoppingToken);
 
                     if (!processed)
                     {

@@ -10,13 +10,30 @@ namespace JobScheduler.Core.DependencyInjection
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddJobSchedulerCore(this IServiceCollection services, Action<JobSchedulerOptions>? configure = null)
+        public static IServiceCollection AddJobSchedulerCore
+        (
+            this IServiceCollection services, 
+            Action<JobSchedulerOptions>? configure = null
+        )
         {
-            var options = new JobSchedulerOptions();
 
-            configure?.Invoke(options);
+            var optionsBuilder = services.AddOptions<JobSchedulerOptions>();
 
-            services.AddSingleton(options);
+            if (configure != null)
+            {
+                optionsBuilder.Configure(configure);
+            }
+
+            optionsBuilder
+            .Validate(options => options.PollingInterval > TimeSpan.Zero,
+                "PollingInterval must be greater than zero.")
+            .Validate(options => options.LockDuration > TimeSpan.Zero,
+                "LockDuration must be greater than zero.")
+            .Validate(options => options.DefaultMaxAttempts > 0,
+                "DefaultMaxAttempts must be greater than zero.")
+            .Validate(options => options.WorkerCount > 0,
+                "WorkerCount must be greater than zero.")
+            .ValidateOnStart();
 
             services.AddSingleton<IJobStore, InMemoryJobStore>();
             services.AddSingleton<JobRegistry>();
@@ -24,8 +41,6 @@ namespace JobScheduler.Core.DependencyInjection
             services.AddScoped<IBackgroundJobClient, BackgroundJobClient>();
             services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
             services.AddScoped<JobProcessor>();
-
-            services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
 
             services.AddHostedService<JobWorkerHostedService>();
 
