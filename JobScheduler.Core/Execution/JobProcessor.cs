@@ -1,6 +1,7 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
 using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Errors;
+using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
 using JobScheduler.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,20 +17,27 @@ namespace JobScheduler.Core.Execution
         private readonly IJobStore _jobStore;
         private readonly JobRegistry _jobRegistry;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly JobSchedulerOptions _options;
         private readonly ILogger<JobProcessor> _logger;
 
-        public JobProcessor(IJobStore jobStore, JobRegistry jobRegistry, IServiceScopeFactory scopeFactory, ILogger<JobProcessor> logger)
+        public JobProcessor(
+            IJobStore jobStore, 
+            JobRegistry jobRegistry, 
+            IServiceScopeFactory scopeFactory,
+            JobSchedulerOptions options,
+            ILogger<JobProcessor> logger)
         {
             _jobStore = jobStore;
             _jobRegistry = jobRegistry;
             _scopeFactory = scopeFactory;
+            _options = options;
             _logger = logger;
         }
 
-        public async Task<bool> TryProcessOneAsync(string workerId, TimeSpan duration, CancellationToken ct)
+        public async Task<bool> TryProcessOneAsync(string workerId, CancellationToken ct)
         {
             // TryClaimNextRunnableJobAsync mark's job as processing state
-            var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, duration, ct);
+            var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, _options.LockDuration, ct);
 
             if (job is null)
             {

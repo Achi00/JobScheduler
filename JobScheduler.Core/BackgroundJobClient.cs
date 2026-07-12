@@ -1,6 +1,7 @@
 ﻿using JobScheduler.Abstractions.Jobs.Enums;
 using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Abstractions.Jobs.Structs;
+using JobScheduler.Core.Options;
 using JobScheduler.Core.Storage;
 using System.Text.Json;
 
@@ -9,10 +10,12 @@ namespace JobScheduler.Core
     internal class BackgroundJobClient : IBackgroundJobClient
     {
         private readonly IJobStore _jobStore;
+        private readonly JobSchedulerOptions _options;
 
-        public BackgroundJobClient(IJobStore jobStore)
+        public BackgroundJobClient(IJobStore jobStore, JobSchedulerOptions options)
         {
             _jobStore = jobStore;
+            _options = options;
         }
         public async Task<JobId> EnqueueAsync<TPayload>(TPayload payload, CancellationToken cancellationToken = default)
         {
@@ -29,7 +32,7 @@ namespace JobScheduler.Core
                 // if AvailableAt is null, means runnable immediately
                 AvailableAt = null,
                 AttemptCount = 0,
-                MaxAttempts = 3
+                MaxAttempts = _options.DefaultMaxAttempts
             };
             await _jobStore.CreateAsync(job, cancellationToken);
 

@@ -1,4 +1,5 @@
 ﻿using JobScheduler.Core.Execution;
+using JobScheduler.Core.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,12 +10,17 @@ namespace JobScheduler.Core.HostedServices
     internal sealed class JobWorkerHostedService : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly JobSchedulerOptions _options;
         private readonly ILogger<JobWorkerHostedService> _logger;
         private readonly string _workerId = $"{Environment.MachineName}-{Guid.NewGuid():N}";
 
-        public JobWorkerHostedService(IServiceScopeFactory scopeFactory, ILogger<JobWorkerHostedService> logger)
+        public JobWorkerHostedService(
+            IServiceScopeFactory scopeFactory,
+            JobSchedulerOptions options,
+            ILogger<JobWorkerHostedService> logger)
         {
             _scopeFactory = scopeFactory;
+            _options = options;
             _logger = logger;
         }
 
@@ -34,7 +40,7 @@ namespace JobScheduler.Core.HostedServices
 
                     if (!processed)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+                        await Task.Delay(_options.PollingInterval, stoppingToken);
                     }
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -44,7 +50,7 @@ namespace JobScheduler.Core.HostedServices
                 {
                     _logger.LogError(ex, "Job worker {WorkedId} failed", _workerId);
 
-                    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+                    await Task.Delay(_options.PollingInterval, stoppingToken);
                 }
             }
 
