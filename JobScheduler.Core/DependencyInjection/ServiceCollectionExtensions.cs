@@ -37,7 +37,6 @@ namespace JobScheduler.Core.DependencyInjection
                 "WorkerCount must be greater than zero.")
             .ValidateOnStart();
 
-            services.AddSingleton<IJobStore, InMemoryJobStore>();
             services.AddSingleton<JobRegistry>();
 
             services.AddScoped<IBackgroundJobClient, BackgroundJobClient>();

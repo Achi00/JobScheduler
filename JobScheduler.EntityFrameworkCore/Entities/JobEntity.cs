@@ -2,6 +2,7 @@
 
 namespace JobScheduler.EntityFrameworkCore.Entities
 {
+    // database schema model
     internal sealed class JobEntity
     {
         public Guid Id { get; set; }
