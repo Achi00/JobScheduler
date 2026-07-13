@@ -122,7 +122,7 @@ namespace JobScheduler.Core.Execution
 
                 case JobStateChangeResult.LockTokenMismatch:
                     _logger.LogWarning(
-                        "Job {JobId} executed successfully, but this worker no longer owns it. Success state update skipped.",
+                        "Job {JobId} executed successfully, but this worker no longer owns it. \"Success\" state update skipped.",
                         job.Id);
 
                     return JobProcessResult.LostOwnership;
@@ -136,7 +136,7 @@ namespace JobScheduler.Core.Execution
 
                 case JobStateChangeResult.InvalidState:
                     _logger.LogWarning(
-                        "Job {JobId} executed successfully, but it was not in Processing state when marking succeeded.",
+                        "Job {JobId} executed successfully, but it was not in \"Processing\" state when marking succeeded.",
                         job.Id);
 
                     return JobProcessResult.StateChangeFailed;
@@ -165,21 +165,21 @@ namespace JobScheduler.Core.Execution
 
                 case JobStateChangeResult.LockTokenMismatch:
                     _logger.LogWarning(
-                        "Job {JobId} execution failed, but this worker no longer owns it. Retry state update skipped.",
+                        "Job {JobId} execution failed, this worker no longer owns it. \"Retry\" state update skipped.",
                         job.Id);
 
                     return JobProcessResult.LostOwnership;
 
                 case JobStateChangeResult.NotFound:
                     _logger.LogWarning(
-                        "Job {JobId} execution failed, but the job record no longer exists.",
+                        "Job {JobId} execution failed, the job record no longer exists.",
                         job.Id);
 
                     return JobProcessResult.StateChangeFailed;
 
                 case JobStateChangeResult.InvalidState:
                     _logger.LogWarning(
-                        "Job {JobId} execution failed, but it was not in Processing state when marking retrying.",
+                        "Job {JobId} execution failed, it was not in \"Processing\" state when marking retrying.",
                         job.Id);
 
                     return JobProcessResult.StateChangeFailed;
@@ -205,21 +205,21 @@ namespace JobScheduler.Core.Execution
 
                 case JobStateChangeResult.LockTokenMismatch:
                     _logger.LogWarning(
-                        "Job {JobId} reached max attempts, but this worker no longer owns it. Failed state update skipped.",
+                        "Job {JobId} reached max attempts, this worker no longer owns it. \"Failed\" state update skipped.",
                         job.Id);
 
                     return JobProcessResult.LostOwnership;
 
                 case JobStateChangeResult.NotFound:
                     _logger.LogWarning(
-                        "Job {JobId} reached max attempts, but the job record no longer exists.",
+                        "Job {JobId} reached max attempts, the job record no longer exists.",
                         job.Id);
 
                     return JobProcessResult.StateChangeFailed;
 
                 case JobStateChangeResult.InvalidState:
                     _logger.LogWarning(
-                        "Job {JobId} reached max attempts, but it was not in Processing state when marking failed.",
+                        "Job {JobId} reached max attempts, it was not in \"Processing\" state when marking failed.",
                         job.Id);
 
                     return JobProcessResult.StateChangeFailed;
