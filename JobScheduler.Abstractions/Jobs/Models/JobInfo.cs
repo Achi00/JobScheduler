@@ -12,7 +12,7 @@ namespace JobScheduler.Abstractions.Jobs.Models
         int AttemptCount,
         int MaxAttempts,
         DateTimeOffset CreatedAt,
-        DateTimeOffset? NextRunAt,
+        DateTimeOffset? AvailableAt,
         DateTimeOffset? StartedAt,
         DateTimeOffset? CompletedAt,
         string? LastError

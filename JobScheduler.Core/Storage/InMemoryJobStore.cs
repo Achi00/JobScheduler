@@ -1,4 +1,6 @@
 ﻿using JobScheduler.Abstractions.Jobs.Enums;
+using JobScheduler.Core.Enums;
+using JobScheduler.Core.Errors;
 
 namespace JobScheduler.Core.Storage
 {
@@ -28,32 +30,49 @@ namespace JobScheduler.Core.Storage
                 job.Status = JobStatus.Processing;
                 job.StartedAt = DateTimeOffset.UtcNow;
                 job.AttemptCount++;
-                job.LastError = null;
+                job.LastErrorMessage = null;
             }
 
             return Task.CompletedTask;
         }
 
-        public Task MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken ct)
+        public Task<JobStateChangeResult> MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken ct)
         {
             lock (_lock)
             {
                 var job = GetRequiredJob(jobId);
 
+                if (job is null)
+                {
+                    return Task.FromResult(JobStateChangeResult.NotFound);
+                }
+
                 if (job.LockToken != lockToken)
                 {
-                    return Task.CompletedTask;
+                    return Task.FromResult(JobStateChangeResult.LockTokenMismatch);
+                }
+
+                if (job.Status != JobStatus.Processing)
+                {
+                    return Task.FromResult(JobStateChangeResult.InvalidState);
                 }
 
                 job.Status = JobStatus.Succeeded;
                 job.CompletedAt = DateTimeOffset.UtcNow;
+                // JobRecord is one execution instance, will not run this exact job record if it succeeds, creates new one
+                job.AvailableAt = null;
+
                 // release lock of worker
                 job.LockedBy = null;
                 job.LockedUntil = null;
-                job.LastError = null;
+
+                // internal error details
+                job.LastErrorMessage = null;
+                job.LastErrorType = null;
+                job.LastErrorDetails = null;
             }
 
-            return Task.CompletedTask;
+            return Task.FromResult(JobStateChangeResult.Applied);
         }
 
         // claim job to specific worker and mark as processing
@@ -65,9 +84,10 @@ namespace JobScheduler.Core.Storage
 
                 var job = _jobs
                     .Where(j =>
+                        // only check runnalbe status jobs
                         (j.Status is JobStatus.Enqueued or JobStatus.Scheduled or JobStatus.Retrying) &&
-                        (j.NextRunAt is null || j.NextRunAt <= now))
-                    .OrderBy(j => j.NextRunAt ?? j.CreatedAt)
+                        (j.AvailableAt is null || j.AvailableAt <= now))
+                    .OrderBy(j => j.AvailableAt ?? j.CreatedAt)
                     .FirstOrDefault();
 
                 if (job is null)
@@ -87,41 +107,75 @@ namespace JobScheduler.Core.Storage
             }
         }
 
-        public Task MarkRetryingAsync(Guid jobId, long lockToken, string error, DateTimeOffset nextRunAt, CancellationToken cancellationToken)
+        public Task<JobStateChangeResult> MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset availableAt, CancellationToken cancellationToken)
         {
             lock (_lock)
             {
                 var job = GetRequiredJob(jobId);
 
+                if (job is null)
+                {
+                    return Task.FromResult(JobStateChangeResult.NotFound);
+                }
+
                 if (job.LockToken != lockToken)
                 {
-                    return Task.CompletedTask;
+                    return Task.FromResult(JobStateChangeResult.NotFound);
                 }
 
                 job.Status = JobStatus.Retrying;
-                job.LastError = error;
-                job.NextRunAt = nextRunAt;
+
+                // internal error details
+                job.LastErrorMessage = error.Message;
+                job.LastErrorType = error.Type;
+                job.LastErrorDetails = error.Details;
+
+                job.AvailableAt = availableAt;
+
+                // if retrying, it has not completed job yet
+                job.CompletedAt = null;
+
                 // release lock of worker
                 job.LockedBy = null;
                 job.LockedUntil = null;
             }
 
-            return Task.CompletedTask;
+            return Task.FromResult(JobStateChangeResult.Applied);
         }
 
-        public Task MarkFailedAsync(Guid jobId, long lockToken, string error, CancellationToken ct)
+        public Task<JobStateChangeResult> MarkFailedAsync(Guid jobId, long lockToken, JobError error, CancellationToken ct)
         {
             lock (_lock)
             {
                 var job = GetRequiredJob(jobId);
 
+                if (job is null)
+                {
+                    return Task.FromResult(JobStateChangeResult.NotFound);
+                }
+
+                if (job.LockToken != lockToken)
+                {
+                    return Task.FromResult(JobStateChangeResult.NotFound);
+                }
+
                 job.Status = JobStatus.Failed;
-                job.StartedAt = DateTimeOffset.UtcNow;
-                job.AttemptCount++;
-                job.LastError = null;
+
+                // internal error details
+                job.LastErrorMessage = error.Message;
+                job.LastErrorType = error.Type;
+                job.LastErrorDetails = error.Details;
+
+                job.CompletedAt = DateTimeOffset.UtcNow;
+
+                // releasing locks
+                job.LockedBy = null;
+                job.LockedUntil = null;
+
+                job.AvailableAt = null;
             }
 
-            return Task.CompletedTask;
+            return Task.FromResult(JobStateChangeResult.Applied);
         }
 
         // using clone only because we work in memory and donw want to use same object reference
@@ -136,10 +190,10 @@ namespace JobScheduler.Core.Storage
                 AttemptCount = job.AttemptCount,
                 MaxAttempts = job.MaxAttempts,
                 CreatedAt = job.CreatedAt,
-                NextRunAt = job.NextRunAt,
+                AvailableAt = job.AvailableAt,
                 StartedAt = job.StartedAt,
                 CompletedAt = job.CompletedAt,
-                LastError = job.LastError,
+                LastErrorMessage = job.LastErrorMessage,
                 LockedBy = job.LockedBy,
                 LockedUntil = job.LockedUntil,
                 LockToken = job.LockToken
@@ -150,6 +204,16 @@ namespace JobScheduler.Core.Storage
         {
             return _jobs.FirstOrDefault(j => j.Id == jobId)
                    ?? throw new InvalidOperationException($"Job '{jobId}' was not found.");
+        }
+
+        public Task<JobRecord?> GetByIdAsync(Guid jobId, CancellationToken cancellationToken)
+        {
+            lock (_lock)
+            {
+                var job = _jobs.FirstOrDefault(j => j.Id == jobId);
+
+                return Task.FromResult(job is null ? null : Clone(job));
+            }
         }
     }
 }

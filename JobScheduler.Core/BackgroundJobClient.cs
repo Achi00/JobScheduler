@@ -1,7 +1,9 @@
 ﻿using JobScheduler.Abstractions.Jobs.Enums;
 using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Abstractions.Jobs.Structs;
+using JobScheduler.Core.Options;
 using JobScheduler.Core.Storage;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 
 namespace JobScheduler.Core
@@ -9,12 +11,14 @@ namespace JobScheduler.Core
     internal class BackgroundJobClient : IBackgroundJobClient
     {
         private readonly IJobStore _jobStore;
+        private readonly JobSchedulerOptions _options;
 
-        public BackgroundJobClient(IJobStore jobStore)
+        public BackgroundJobClient(IJobStore jobStore, IOptions<JobSchedulerOptions> options)
         {
             _jobStore = jobStore;
+            _options = options.Value;
         }
-        public async Task<Guid> EnqueueAsync<TPayload>(TPayload payload, CancellationToken cancellationToken = default)
+        public async Task<JobId> EnqueueAsync<TPayload>(TPayload payload, CancellationToken cancellationToken = default)
         {
             var jobId = JobId.New();
 
@@ -26,16 +30,21 @@ namespace JobScheduler.Core
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = JobStatus.Enqueued,
                 CreatedAt = DateTimeOffset.UtcNow,
-                NextRunAt = null
+                // if AvailableAt is null, means runnable immediately
+                AvailableAt = null,
+                AttemptCount = 0,
+                MaxAttempts = _options.DefaultMaxAttempts
             };
             await _jobStore.CreateAsync(job, cancellationToken);
 
-            return jobId.Value;
+            return jobId;
         }
 
-        public async Task<Guid> ScheduleAsync<TPayload>(TPayload payload, DateTimeOffset runAt, CancellationToken cancellationToken = default)
+        public async Task<JobId> ScheduleAsync<TPayload>(TPayload payload, DateTimeOffset runAt, CancellationToken cancellationToken = default)
         {
             var jobId = JobId.New();
+
+            var now = DateTimeOffset.UtcNow;
 
             var job = new JobRecord
             {
@@ -43,14 +52,16 @@ namespace JobScheduler.Core
                 // TODO: later will be using JobNameAttribute
                 JobType = typeof(TPayload).FullName!,
                 PayloadJson = JsonSerializer.Serialize(payload),
-                Status = JobStatus.Scheduled,
-                CreatedAt = DateTimeOffset.UtcNow,
-                NextRunAt = null
+                Status = runAt <= now ? JobStatus.Enqueued : JobStatus.Scheduled,
+                CreatedAt = now,
+                AvailableAt = runAt <= now ? null : runAt.ToUniversalTime(),
+                AttemptCount = 0,
+                MaxAttempts = _options.DefaultMaxAttempts
             };
 
             await _jobStore.CreateAsync(job, cancellationToken);
 
-            return jobId.Value;
+            return jobId;
         }
     }
 }

@@ -1,15 +1,39 @@
-﻿namespace JobScheduler.Core.Storage
+﻿using JobScheduler.Core.Enums;
+using JobScheduler.Core.Errors;
+
+namespace JobScheduler.Core.Storage
 {
     internal interface IJobStore
     {
-        Task CreateAsync(JobRecord job, CancellationToken cancellationToken);
+        Task CreateAsync(
+            JobRecord job, 
+            CancellationToken cancellationToken);
 
-        Task<JobRecord?> TryClaimNextRunnableJobAsync(string workerId, TimeSpan lockDuration, CancellationToken cancellationToken);
+        Task<JobRecord?> GetByIdAsync(
+            Guid jobId, 
+            CancellationToken cancellationToken);
 
-        Task MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken cancellationToken);
+        Task<JobRecord?> TryClaimNextRunnableJobAsync(
+            string workerId, 
+            TimeSpan lockDuration, 
+            CancellationToken cancellationToken);
 
-        Task MarkFailedAsync(Guid jobId, long lockToken, string error, CancellationToken cancellationToken);
+        Task<JobStateChangeResult> MarkSucceededAsync(
+            Guid jobId, 
+            long lockToken, 
+            CancellationToken cancellationToken);
 
-        Task MarkRetryingAsync(Guid jobId, long lockToken, string error, DateTimeOffset nextRunAt, CancellationToken cancellationToken);
+        Task<JobStateChangeResult> MarkFailedAsync(
+            Guid jobId, 
+            long lockToken, 
+            JobError error, 
+            CancellationToken cancellationToken);
+
+        Task<JobStateChangeResult> MarkRetryingAsync(
+            Guid jobId,
+            long lockToken, 
+            JobError error, 
+            DateTimeOffset nextRunAt, 
+            CancellationToken cancellationToken);
     }
 }
