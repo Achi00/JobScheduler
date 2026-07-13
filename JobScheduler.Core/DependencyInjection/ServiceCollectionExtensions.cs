@@ -4,6 +4,7 @@ using JobScheduler.Core.HostedServices;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
 using JobScheduler.Core.Storage;
+using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace JobScheduler.Core.DependencyInjection

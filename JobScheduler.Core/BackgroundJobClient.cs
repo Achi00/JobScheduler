@@ -2,7 +2,7 @@
 using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Options;
-using JobScheduler.Core.Storage;
+using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 

@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JobScheduler.Abstractions\JobScheduler.Abstractions.csproj" />
+    <ProjectReference Include="..\JobScheduler.Storage.Abstractions\JobScheduler.Storage.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

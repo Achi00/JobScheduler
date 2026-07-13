@@ -1,6 +1,5 @@
 ﻿using JobScheduler.Abstractions.Jobs.Enums;
-using JobScheduler.Core.Enums;
-using JobScheduler.Core.Errors;
+using JobScheduler.Storage.Abstractions.Jobs;
 
 namespace JobScheduler.Core.Storage
 {

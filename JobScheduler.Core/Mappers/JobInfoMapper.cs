@@ -1,6 +1,6 @@
 ﻿using JobScheduler.Abstractions.Jobs.Models;
 using JobScheduler.Abstractions.Jobs.Structs;
-using JobScheduler.Core.Storage;
+using JobScheduler.Storage.Abstractions.Jobs;
 
 namespace JobScheduler.Core.Mappers
 {
