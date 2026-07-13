@@ -1,5 +1,11 @@
 <Solution>
+  <Folder Name="/Core/">
+    <Project Path="JobScheduler.Core/JobScheduler.Core.csproj" Id="7edb94b1-af01-4acc-99c5-85601e009980" />
+  </Folder>
+  <Folder Name="/Storage/">
+    <Project Path="JobScheduler.EntityFrameworkCore/JobScheduler.EntityFrameworkCore.csproj" Id="3fb29b8f-78d2-4245-bc85-df09cad220f7" />
+    <Project Path="JobScheduler.Storage.Abstractions/JobScheduler.Storage.Abstractions.csproj" Id="83808c65-750a-43ca-ae13-423c5c6337ca" />
+  </Folder>
   <Project Path="JobScheduler.Abstractions/JobScheduler.Abstractions.csproj" Id="cfc0ccb3-2ccd-4443-a4b0-f8f8414c2ad9" />
   <Project Path="JobScheduler.Client/JobScheduler.Client.csproj" Id="6d4c77eb-5070-43fa-ab59-5a6f4ccf7247" />
-  <Project Path="JobScheduler.Core/JobScheduler.Core.csproj" Id="7edb94b1-af01-4acc-99c5-85601e009980" />
 </Solution>
