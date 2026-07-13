@@ -10,4 +10,12 @@
     <ProjectReference Include="..\JobScheduler.Core\JobScheduler.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Persistence\Configurations\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.28" />
+  </ItemGroup>
+
 </Project>
