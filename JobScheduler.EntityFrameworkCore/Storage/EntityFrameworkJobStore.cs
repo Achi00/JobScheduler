@@ -5,11 +5,11 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 {
     public sealed class EntityFrameworkJobStore : IJobStore
     {
-        private readonly JobSchedulerDbContext _db;
+        private readonly JobSchedulerDbContext _context;
 
-        public EntityFrameworkJobStore(JobSchedulerDbContext db)
+        public EntityFrameworkJobStore(JobSchedulerDbContext context)
         {
-            _db = db;
+            _context = context;
         }
         public Task CreateAsync(JobRecord job, CancellationToken cancellationToken)
         {
