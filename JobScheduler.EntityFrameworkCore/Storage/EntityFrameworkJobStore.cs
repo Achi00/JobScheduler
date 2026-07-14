@@ -73,7 +73,6 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                 // token was changed between load and save
                 return JobStateChangeResult.LockTokenMismatch;
             }
-
         }
 
         public async Task<JobStateChangeResult> MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset nextRunAt, CancellationToken cancellationToken)
@@ -109,14 +108,36 @@ namespace JobScheduler.EntityFrameworkCore.Storage
             return JobStateChangeResult.Applied;
         }
 
-        public Task<JobStateChangeResult> MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken cancellationToken)
+        public async Task<JobStateChangeResult> MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
-        public Task<JobRecord?> TryClaimNextRunnableJobAsync(string workerId, TimeSpan lockDuration, CancellationToken cancellationToken)
+        // TESTING: trying to use READPAST/UPDLOCK/ROWLOCK so no worker can access and lock job between select and update
+        public async Task<JobRecord?> TryClaimNextRunnableJobAsync(string workerId, TimeSpan lockDuration, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var now = DateTimeOffset.UtcNow;
+            var lockedUntil = now.Add(lockDuration);
+            var newLockToken = DateTime.UtcNow.Ticks;
+
+            var claimed = await _context.Jobs.FromSqlInterpolated($@"
+                WITH cte AS (
+                    SELECT TOP (1) *
+                    FROM Jobs WITH (READPAST, UPDLOCK, ROWLOCK)
+                    WHERE Status IN ({(int)JobStatus.Enqueued}, {(int)JobStatus.Retrying}, {(int)JobStatus.Scheduled})
+                      AND AvailableAt <= {now}
+                    ORDER BY AvailableAt ASC
+                )
+                UPDATE cte
+                SET Status = {(int)JobStatus.Processing},
+                    LockedBy = {workerId},
+                    LockedUntil = {lockedUntil},
+                    LockToken = {newLockToken}
+                OUTPUT INSERTED.*;
+            ").AsNoTracking().ToListAsync(cancellationToken);
+
+            var entity = claimed.SingleOrDefault();
+            return entity is null ? null : JobEntityMapper.ToRecord(entity);
         }
 
         // includes ef core tracking, can be modified
