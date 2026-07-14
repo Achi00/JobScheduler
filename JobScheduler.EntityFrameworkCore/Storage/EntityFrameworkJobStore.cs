@@ -1,4 +1,5 @@
 ﻿using JobScheduler.Abstractions.Jobs.Enums;
+using JobScheduler.EntityFrameworkCore.Entities;
 using JobScheduler.EntityFrameworkCore.Persistence.Context;
 using JobScheduler.Storage.Abstractions.Jobs;
 using JobScheduler.Storage.EntityFrameworkCore.Mappers;
@@ -109,16 +110,11 @@ namespace JobScheduler.EntityFrameworkCore.Storage
         }
 
         // includes ef core tracking, can be modified
-        private async Task<JobRecord?> GetJobForUpdate(Guid jobId, CancellationToken cancellationToken)
+        private async Task<JobEntity?> GetJobForUpdate(Guid jobId, CancellationToken cancellationToken)
         {
             var job = await _context.Jobs.FirstOrDefaultAsync(x => x.Id == jobId, cancellationToken);
 
-            if (job != null)
-            {
-                return JobEntityMapper.ToRecord(job);
-            }
-
-            return null;
+            return job;
         }
     }
 }
