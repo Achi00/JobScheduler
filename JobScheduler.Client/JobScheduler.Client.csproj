@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JobScheduler.Core\JobScheduler.Core.csproj" />
+    <ProjectReference Include="..\JobScheduler.EntityFrameworkCore\JobScheduler.Storage.EntityFrameworkCore.csproj" />
   </ItemGroup>
 
 </Project>
