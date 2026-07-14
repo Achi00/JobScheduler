@@ -63,7 +63,17 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
             job.AvailableAt = null;
 
-            return JobStateChangeResult.Applied;
+            try
+            {
+                await _context.SaveChangesAsync(cancellationToken);
+                return JobStateChangeResult.Applied;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // token was changed between load and save
+                return JobStateChangeResult.LockTokenMismatch;
+            }
+
         }
 
         public async Task<JobStateChangeResult> MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset nextRunAt, CancellationToken cancellationToken)

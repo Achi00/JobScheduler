@@ -32,6 +32,11 @@ namespace JobScheduler.EntityFrameworkCore.Persistence.Configurations
             builder.Property(x => x.LastErrorType)
                 .HasMaxLength(512);
 
+            // uses optimistic concurrency, is included in WHERE clause durinf updates and deletes
+            // ef core tracks original token value
+            builder.Property(j => j.LockToken)
+                .IsConcurrencyToken();
+
             builder.HasIndex(x => new
             {
                 x.Status,
