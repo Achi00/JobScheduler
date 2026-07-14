@@ -119,7 +119,7 @@ namespace JobScheduler.Core.Storage
 
                 if (job.LockToken != lockToken)
                 {
-                    return Task.FromResult(JobStateChangeResult.NotFound);
+                    return Task.FromResult(JobStateChangeResult.LockTokenMismatch);
                 }
 
                 job.Status = JobStatus.Retrying;
@@ -155,7 +155,7 @@ namespace JobScheduler.Core.Storage
 
                 if (job.LockToken != lockToken)
                 {
-                    return Task.FromResult(JobStateChangeResult.NotFound);
+                    return Task.FromResult(JobStateChangeResult.LockTokenMismatch);
                 }
 
                 job.Status = JobStatus.Failed;

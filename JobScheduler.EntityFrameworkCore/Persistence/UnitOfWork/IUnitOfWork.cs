@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Storage;
 
-namespace JobScheduler.EntityFrameworkCore.Persistence
+namespace JobScheduler.Storage.EntityFrameworkCore.Persistence.UnitOfWork
 {
     public interface IUnitOfWork
     {

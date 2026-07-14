@@ -1,7 +1,7 @@
 ﻿using JobScheduler.EntityFrameworkCore.Persistence.Context;
 using Microsoft.EntityFrameworkCore.Storage;
 
-namespace JobScheduler.EntityFrameworkCore.Persistence
+namespace JobScheduler.Storage.EntityFrameworkCore.Persistence.UnitOfWork
 {
     internal class UnitOfWork : IUnitOfWork
     {
