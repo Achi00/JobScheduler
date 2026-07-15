@@ -1,6 +1,6 @@
 ﻿namespace JobScheduler.Storage.EntityFrameworkCore.Enums
 {
-    public enum SnapshotIsolationRequirement
+    public enum DatabaseSettingValidationMode
     {
         // dont check RCSI
         Ignore,

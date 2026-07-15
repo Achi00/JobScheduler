@@ -4,7 +4,7 @@ namespace JobScheduler.Storage.EntityFrameworkCore.Options
 {
     public sealed class SqlServerJobStoreOptions
     {
-        public SnapshotIsolationRequirement ReadCommittedSnapshotRequirement { get; set; }
-            = SnapshotIsolationRequirement.Warn;
+        public DatabaseSettingValidationMode ReadCommittedSnapshotRequirement { get; set; }
+            = DatabaseSettingValidationMode.Warn;
     }
 }

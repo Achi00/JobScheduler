@@ -1,4 +1,5 @@
-﻿using JobScheduler.Storage.EntityFrameworkCore.Interfaces;
+﻿using JobScheduler.Storage.EntityFrameworkCore.Enums;
+using JobScheduler.Storage.EntityFrameworkCore.Interfaces;
 using JobScheduler.Storage.EntityFrameworkCore.Options;
 using Microsoft.Extensions.Logging;
 
@@ -20,9 +21,12 @@ namespace JobScheduler.Storage.EntityFrameworkCore.Validations
             _logger = logger;
         }
 
-        public Task CheckAsync(CancellationToken cancellationToken)
+        public async Task CheckAsync(CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            if (_options.ReadCommittedSnapshotRequirement == DatabaseSettingValidationMode.Ignore)
+            {
+                return;
+            }
         }
     }
 }
