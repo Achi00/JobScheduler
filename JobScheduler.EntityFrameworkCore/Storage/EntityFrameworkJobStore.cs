@@ -121,18 +121,25 @@ namespace JobScheduler.EntityFrameworkCore.Storage
             var newLockToken = DateTime.UtcNow.Ticks;
 
             var claimed = await _context.Jobs.FromSqlInterpolated($@"
-                WITH cte AS (
+                WITH Candidate AS (
                     SELECT TOP (1) *
-                    FROM Jobs WITH (READPAST, UPDLOCK, ROWLOCK)
+                    FROM Jobs WITH (READPAST, UPDLOCK, ROWLOCK, READCOMMITTEDLOCK)
                     WHERE Status IN ({(int)JobStatus.Enqueued}, {(int)JobStatus.Retrying}, {(int)JobStatus.Scheduled})
                       AND AvailableAt <= {now}
-                    ORDER BY AvailableAt ASC
+                      AND 
+                      (
+                            LockedUntil IS NULL OR LockedUntil <= SYSUTCDATETIME()
+                      )
+                    ORDER BY AvailableAt, CreatedAt
                 )
-                UPDATE cte
+                UPDATE Candidate
                 SET Status = {(int)JobStatus.Processing},
                     LockedBy = {workerId},
                     LockedUntil = {lockedUntil},
                     LockToken = {newLockToken}
+                    AttemptCount = AttemptCount + 1,
+                    StartedAt = SYSUTCDATETIME(),
+                    UpdatedAt = SYSUTCDATETIME()
                 OUTPUT INSERTED.*;
             ").AsNoTracking().ToListAsync(cancellationToken);
 
