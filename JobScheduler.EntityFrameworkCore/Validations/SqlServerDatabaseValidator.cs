@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Data;
 
-namespace JobScheduler.Storage.EntityFrameworkCore
+namespace JobScheduler.Storage.EntityFrameworkCore.Validations
 {
     internal sealed class SqlServerDatabaseValidator
     {
