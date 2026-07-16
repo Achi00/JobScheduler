@@ -110,7 +110,34 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
         public async Task<JobStateChangeResult> MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var affectedRows = await _context.Jobs
+                .Where(job => job.Id == jobId && job.Status == JobStatus.Processing && job.LockToken == lockToken)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(
+                    job => job.Status,
+                    JobStatus.Succeeded)
+                .SetProperty(
+                    job => job.CompletedAt,
+                    DateTimeOffset.UtcNow)
+                .SetProperty(
+                    job => job.LockedBy,
+                    (string?)null)
+                .SetProperty(
+                    job => job.LockedUntil,
+                    (DateTimeOffset?)null)
+                .SetProperty(
+                    job => job.AvailableAt,
+                    (DateTimeOffset?)null),
+            cancellationToken
+            );
+
+            if (affectedRows == 1)
+            {
+                return JobStateChangeResult.Applied;
+            }
+
+            // TODO: change later
+            return JobStateChangeResult.Applied;
         }
 
         // TESTING: trying to use READPAST/UPDLOCK/ROWLOCK so no worker can access and lock job between select and update
@@ -126,6 +153,18 @@ namespace JobScheduler.EntityFrameworkCore.Storage
             }
 
             var lockDurationMilliseconds = checked((int)lockDuration.TotalMilliseconds);
+
+            /*
+             * READCOMMITTEDLOCK - uses locks version of data and not snapshot to access this table
+             * UPDLOCK - lock candidate for someone who intending to update it
+             * READPAST - skip candidates already locked by another worker
+             * ROWLOCK - uses only indicidual row or key locking
+             * 
+             * if RCSI is enabled SQL Server and as default dont looks at current locked row, it reads older commited copy
+             * with READPAST it will skip currently locked rows
+             * Those two uses different stategies, in this query READCOMMITTEDLOCK is used for it to not read old row version
+             * and use locking based read, without this worked coup see older commited version of some job we have in db
+             */
 
             var claimed = await _context.Jobs.FromSqlInterpolated($"""
             DECLARE @Now datetimeoffset(7) =
@@ -165,6 +204,7 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                     DATEADD(MILLISECOND, {lockDurationMilliseconds}, @Now),
                 [LockToken] = [LockToken] + 1,
                 [AttemptCount] = [AttemptCount] + 1,
+                [AvailableAt] = NULL,
                 [StartedAt] = @Now,
                 [UpdatedAt] = @Now
             OUTPUT INSERTED.*;
