@@ -118,7 +118,6 @@ namespace JobScheduler.EntityFrameworkCore.Storage
         {
             var now = DateTimeOffset.UtcNow;
             var lockedUntil = now.Add(lockDuration);
-            var newLockToken = DateTime.UtcNow.Ticks;
 
             var claimed = await _context.Jobs.FromSqlInterpolated($@"
                 WITH Candidate AS (
@@ -136,7 +135,7 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                 SET Status = {(int)JobStatus.Processing},
                     LockedBy = {workerId},
                     LockedUntil = {lockedUntil},
-                    LockToken = {newLockToken}
+                    LockToken = LockToken + 1,
                     AttemptCount = AttemptCount + 1,
                     StartedAt = SYSUTCDATETIME(),
                     UpdatedAt = SYSUTCDATETIME()
