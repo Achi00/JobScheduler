@@ -116,33 +116,62 @@ namespace JobScheduler.EntityFrameworkCore.Storage
         // TESTING: trying to use READPAST/UPDLOCK/ROWLOCK so no worker can access and lock job between select and update
         public async Task<JobRecord?> TryClaimNextRunnableJobAsync(string workerId, TimeSpan lockDuration, CancellationToken cancellationToken)
         {
-            var now = DateTimeOffset.UtcNow;
-            var lockedUntil = now.Add(lockDuration);
+            ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
 
-            var claimed = await _context.Jobs.FromSqlInterpolated($@"
-                WITH Candidate AS (
-                    SELECT TOP (1) *
-                    FROM Jobs WITH (READPAST, UPDLOCK, ROWLOCK, READCOMMITTEDLOCK)
-                    WHERE Status IN ({(int)JobStatus.Enqueued}, {(int)JobStatus.Retrying}, {(int)JobStatus.Scheduled})
-                      AND AvailableAt <= {now}
-                      AND 
-                      (
-                            LockedUntil IS NULL OR LockedUntil <= SYSUTCDATETIME()
-                      )
-                    ORDER BY AvailableAt, CreatedAt
+            if (lockDuration <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(lockDuration),
+                    "Lock duration must be greater than zero.");
+            }
+
+            var lockDurationMilliseconds = checked((int)lockDuration.TotalMilliseconds);
+
+            var claimed = await _context.Jobs.FromSqlInterpolated($"""
+            DECLARE @Now datetimeoffset(7) =
+                TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00');
+
+            ;WITH Candidate AS
+            (
+                SELECT TOP (1) *
+                FROM [dbo].[Jobs] WITH
+                (
+                    UPDLOCK,
+                    READPAST,
+                    ROWLOCK,
+                    READCOMMITTEDLOCK
                 )
-                UPDATE Candidate
-                SET Status = {(int)JobStatus.Processing},
-                    LockedBy = {workerId},
-                    LockedUntil = {lockedUntil},
-                    LockToken = LockToken + 1,
-                    AttemptCount = AttemptCount + 1,
-                    StartedAt = SYSUTCDATETIME(),
-                    UpdatedAt = SYSUTCDATETIME()
-                OUTPUT INSERTED.*;
-            ").AsNoTracking().ToListAsync(cancellationToken);
+                WHERE [Status] IN
+                (
+                    {(int)JobStatus.Enqueued},
+                    {(int)JobStatus.Retrying},
+                    {(int)JobStatus.Scheduled}
+                )
+                  AND [AvailableAt] <= @Now
+                  AND
+                  (
+                      [LockedUntil] IS NULL
+                      OR [LockedUntil] <= @Now
+                  )
+                ORDER BY
+                    [AvailableAt],
+                    [CreatedAt]
+            )
+            UPDATE Candidate
+            SET
+                [Status] = {(int)JobStatus.Processing},
+                [LockedBy] = {workerId},
+                [LockedUntil] =
+                    DATEADD(MILLISECOND, {lockDurationMilliseconds}, @Now),
+                [LockToken] = [LockToken] + 1,
+                [AttemptCount] = [AttemptCount] + 1,
+                [StartedAt] = @Now,
+                [UpdatedAt] = @Now
+            OUTPUT INSERTED.*;
+            """).AsNoTracking().ToListAsync(cancellationToken);
 
             var entity = claimed.SingleOrDefault();
+
             return entity is null ? null : JobEntityMapper.ToRecord(entity);
         }
 
