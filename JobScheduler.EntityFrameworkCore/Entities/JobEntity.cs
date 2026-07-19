@@ -24,6 +24,7 @@ namespace JobScheduler.EntityFrameworkCore.Entities
         public DateTimeOffset? StartedAt { get; set; }
 
         public DateTimeOffset? CompletedAt { get; set; }
+        public DateTimeOffset? UpdatedAt { get; set; }
 
         public DateTimeOffset? LockedUntil { get; set; }
 

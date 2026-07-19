@@ -4,6 +4,7 @@
   </Folder>
   <Folder Name="/Storage/">
     <Project Path="JobScheduler.EntityFrameworkCore/JobScheduler.Storage.EntityFrameworkCore.csproj" Id="3fb29b8f-78d2-4245-bc85-df09cad220f7" />
+    <Project Path="JobScheduler.Persistence.SqlServer/JobScheduler.Persistence.SqlServer.csproj" Id="9f9f3fa5-0dee-4eb8-9c25-cc0a4a67cd1b" />
     <Project Path="JobScheduler.Storage.Abstractions/JobScheduler.Storage.Abstractions.csproj" Id="83808c65-750a-43ca-ae13-423c5c6337ca" />
   </Folder>
   <Project Path="JobScheduler.Abstractions/JobScheduler.Abstractions.csproj" Id="cfc0ccb3-2ccd-4443-a4b0-f8f8414c2ad9" />

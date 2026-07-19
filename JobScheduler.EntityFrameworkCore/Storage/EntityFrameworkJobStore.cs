@@ -38,6 +38,8 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
         public async Task<JobStateChangeResult> MarkFailedAsync(Guid jobId, long lockToken, JobError error, CancellationToken cancellationToken)
         {
+            var now = DateTimeOffset.UtcNow;
+
             var affectedRows = await _context.Jobs
                 .Where(job => job.Id == jobId && job.Status == JobStatus.Processing && job.LockToken == lockToken)
                 .ExecuteUpdateAsync(
@@ -47,7 +49,10 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                             JobStatus.Failed)
                         .SetProperty(
                             job => job.CompletedAt,
-                            DateTimeOffset.UtcNow)
+                            now)
+                        .SetProperty(
+                            job => job.UpdatedAt,
+                            now)
                         .SetProperty(
                             job => job.LockedBy,
                             (string?)null)
@@ -73,8 +78,6 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                 return JobStateChangeResult.Applied;
             }
 
-            // 0 rows where updated
-            // worst case scenario 2 db round trips
             return await DetermineStateChangeFailureAsync(
                 jobId,
                 lockToken,
@@ -83,6 +86,8 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
         public async Task<JobStateChangeResult> MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset nextRunAt, CancellationToken cancellationToken)
         {
+            var now = DateTimeOffset.UtcNow;
+
             var affectedRows = await _context.Jobs
                 .Where(job => job.Id == jobId && job.Status == JobStatus.Processing && job.LockToken == lockToken)
                 .ExecuteUpdateAsync(
@@ -93,6 +98,9 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                         .SetProperty(
                             job => job.CompletedAt,
                             (DateTimeOffset?)null)
+                        .SetProperty(
+                            job => job.UpdatedAt,
+                            now)
                         .SetProperty(
                             job => job.LockedBy,
                             (string?)null)
@@ -118,8 +126,6 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                 return JobStateChangeResult.Applied;
             }
 
-            // 0 rows where updated
-            // worst case scenario 2 db round trips
             return await DetermineStateChangeFailureAsync(
                 jobId,
                 lockToken,
@@ -128,6 +134,8 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
         public async Task<JobStateChangeResult> MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken cancellationToken)
         {
+            var now = DateTimeOffset.UtcNow;
+
             // ExecuteUpdateAsync needs no saveCahnges does not affects ef tracking
             var affectedRows = await _context.Jobs
                 .Where(job => job.Id == jobId && job.Status == JobStatus.Processing && job.LockToken == lockToken)
@@ -138,7 +146,10 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                             JobStatus.Succeeded)
                         .SetProperty(
                             job => job.CompletedAt,
-                            DateTimeOffset.UtcNow)
+                            now)
+                        .SetProperty(
+                            job => job.UpdatedAt,
+                            now)
                         .SetProperty(
                             job => job.LockedBy,
                             (string?)null)
@@ -155,8 +166,6 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                 return JobStateChangeResult.Applied;
             }
 
-            // 0 rows where updated
-            // worst case scenario 2 db round trips
             return await DetermineStateChangeFailureAsync(
                 jobId,
                 lockToken,
