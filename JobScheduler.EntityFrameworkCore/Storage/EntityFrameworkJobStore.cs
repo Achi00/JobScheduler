@@ -4,6 +4,8 @@ using JobScheduler.EntityFrameworkCore.Persistence.Context;
 using JobScheduler.Storage.Abstractions.Jobs;
 using JobScheduler.Storage.EntityFrameworkCore.Mappers;
 using Microsoft.EntityFrameworkCore;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace JobScheduler.EntityFrameworkCore.Storage
 {
@@ -113,23 +115,23 @@ namespace JobScheduler.EntityFrameworkCore.Storage
             var affectedRows = await _context.Jobs
                 .Where(job => job.Id == jobId && job.Status == JobStatus.Processing && job.LockToken == lockToken)
                 .ExecuteUpdateAsync(
-                    setters => setters.SetProperty(
-                    job => job.Status,
-                    JobStatus.Succeeded)
-                .SetProperty(
-                    job => job.CompletedAt,
-                    DateTimeOffset.UtcNow)
-                .SetProperty(
-                    job => job.LockedBy,
-                    (string?)null)
-                .SetProperty(
-                    job => job.LockedUntil,
-                    (DateTimeOffset?)null)
-                .SetProperty(
-                    job => job.AvailableAt,
-                    (DateTimeOffset?)null),
-            cancellationToken
-            );
+                    setters => setters
+                        .SetProperty(
+                            job => job.Status,
+                            JobStatus.Succeeded)
+                        .SetProperty(
+                            job => job.CompletedAt,
+                            DateTimeOffset.UtcNow)
+                        .SetProperty(
+                            job => job.LockedBy,
+                            (string?)null)
+                        .SetProperty(
+                            job => job.LockedUntil,
+                            (DateTimeOffset?)null)
+                        .SetProperty(
+                            job => job.AvailableAt,
+                            (DateTimeOffset?)null),
+                cancellationToken);
 
             if (affectedRows == 1)
             {
@@ -138,6 +140,64 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
             // TODO: change later
             return JobStateChangeResult.Applied;
+        }
+
+        // handles jobs where status processing + expired jobs to retrying or failed
+        // incrementing token while recovering, bacause old worker with old LockToken should not be able to carry on expired job after it hang or slept
+        public async Task RecoverExpiredJobsAsync(int batchSize, CancellationToken cancellationToken)
+        {
+            var claimed = await _context.Jobs.FromSqlInterpolated($"""
+                DECLARE @Now datetimeoffset(7) =
+                    TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00');
+
+                ;WITH ExpiredJobs AS
+                (
+                    SELECT TOP (@BatchSize) *
+                    FROM dbo.Jobs WITH
+                    (
+                        UPDLOCK,
+                        READPAST,
+                        ROWLOCK,
+                        READCOMMITTEDLOCK
+                    )
+                    WHERE Status = @Processing
+                      AND LockedUntil <= @Now
+                    ORDER BY LockedUntil
+                )
+                UPDATE ExpiredJobs
+                SET
+                    Status =
+                        CASE
+                            WHEN AttemptCount >= MaxAttempts
+                                THEN @Failed
+                            ELSE @Retrying
+                        END,
+
+                    AvailableAt =
+                        CASE
+                            WHEN AttemptCount >= MaxAttempts
+                                THEN NULL
+                            ELSE DATEADD(SECOND, @RecoveryDelaySeconds, @Now)
+                        END,
+
+                    CompletedAt =
+                        CASE
+                            WHEN AttemptCount >= MaxAttempts
+                                THEN @Now
+                            ELSE NULL
+                        END,
+
+                    LastErrorMessage = 'Worker lease expired before completion.',
+                    LastErrorType = 'JobLeaseExpired',
+                    LockedBy = NULL,
+                    LockedUntil = NULL,
+                    LockToken = LockToken + 1,
+
+                    UpdatedAt = @Now;
+            """).AsNoTracking().ToListAsync(cancellationToken);
+
+            var entity = claimed.SingleOrDefault();
+            // TODO: change return type
         }
 
         // TESTING: trying to use READPAST/UPDLOCK/ROWLOCK so no worker can access and lock job between select and update

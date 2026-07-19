@@ -32,5 +32,9 @@
             JobError error,
             DateTimeOffset nextRunAt,
             CancellationToken cancellationToken);
+
+        Task<int> RecoverExpiredJobsAsync(
+            int batchSize,
+            CancellationToken cancellationToken);
     }
 }
