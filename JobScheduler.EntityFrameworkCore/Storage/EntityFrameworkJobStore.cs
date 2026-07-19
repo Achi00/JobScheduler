@@ -112,6 +112,7 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
         public async Task<JobStateChangeResult> MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken cancellationToken)
         {
+            // ExecuteUpdateAsync needs no saveCahnges does not affects ef tracking
             var affectedRows = await _context.Jobs
                 .Where(job => job.Id == jobId && job.Status == JobStatus.Processing && job.LockToken == lockToken)
                 .ExecuteUpdateAsync(
@@ -138,8 +139,12 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                 return JobStateChangeResult.Applied;
             }
 
-            // TODO: change later
-            return JobStateChangeResult.Applied;
+            // 0 rows where updated
+            // worst case scenario 2 db round trips
+            return await DetermineStateChangeFailureAsync(
+                jobId,
+                lockToken,
+                cancellationToken);
         }
 
         // handles jobs where status processing + expired jobs to retrying or failed
@@ -281,6 +286,35 @@ namespace JobScheduler.EntityFrameworkCore.Storage
             var job = await _context.Jobs.FirstOrDefaultAsync(x => x.Id == jobId, cancellationToken);
 
             return job;
+        }
+
+        // returns appropriate job state value base on what condition job is at
+        private async Task<JobStateChangeResult> DetermineStateChangeFailureAsync(
+            Guid jobId,
+            long expectedLockToken,
+            CancellationToken cancellationToken)
+        {
+            var job = await _context.Jobs
+                .AsNoTracking()
+                .Where(job => job.Id == jobId)
+                .Select(job => new
+                {
+                    job.Status,
+                    job.LockToken
+                })
+                .SingleOrDefaultAsync(cancellationToken);
+
+            if (job is null)
+            {
+                return JobStateChangeResult.NotFound;
+            }
+
+            if (job.LockToken != expectedLockToken)
+            {
+                return JobStateChangeResult.LockTokenMismatch;
+            }
+
+            return JobStateChangeResult.InvalidState;
         }
     }
 }
