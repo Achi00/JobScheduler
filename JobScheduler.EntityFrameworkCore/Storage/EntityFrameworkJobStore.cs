@@ -4,11 +4,11 @@ using JobScheduler.EntityFrameworkCore.Persistence.Context;
 using JobScheduler.Storage.Abstractions.Jobs;
 using JobScheduler.Storage.EntityFrameworkCore.Mappers;
 using Microsoft.EntityFrameworkCore;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace JobScheduler.EntityFrameworkCore.Storage
 {
+    // TODO: add strict expiration together with a heartbeat/lease-renewal mechanism
+    // currently only LockToken matching is used
     public sealed class EntityFrameworkJobStore : IJobStore
     {
         private readonly JobSchedulerDbContext _context;
@@ -38,76 +38,92 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
         public async Task<JobStateChangeResult> MarkFailedAsync(Guid jobId, long lockToken, JobError error, CancellationToken cancellationToken)
         {
-            var job = await GetJobForUpdate(jobId, cancellationToken);
+            var affectedRows = await _context.Jobs
+                .Where(job => job.Id == jobId && job.Status == JobStatus.Processing && job.LockToken == lockToken)
+                .ExecuteUpdateAsync(
+                    setter => setter
+                        .SetProperty(
+                            job => job.Status,
+                            JobStatus.Failed)
+                        .SetProperty(
+                            job => job.CompletedAt,
+                            DateTimeOffset.UtcNow)
+                        .SetProperty(
+                            job => job.LockedBy,
+                            (string?)null)
+                        .SetProperty(
+                            job => job.LockedUntil,
+                            (DateTimeOffset?)null)
+                        .SetProperty(
+                            job => job.AvailableAt,
+                            (DateTimeOffset?)null)
+                        .SetProperty(
+                            job => job.LastErrorDetails,
+                            error.Details)
+                        .SetProperty(
+                            job => job.LastErrorMessage,
+                            error.Message)
+                        .SetProperty(
+                            job => job.LastErrorType,
+                            error.Type),
+                cancellationToken);
 
-            if (job is null)
+            if (affectedRows == 1)
             {
-                return JobStateChangeResult.NotFound;
-            }
-
-            if (job.LockToken != lockToken)
-            {
-                return JobStateChangeResult.LockTokenMismatch;
-            }
-
-            job.Status = JobStatus.Failed;
-
-            // internal error details
-            job.LastErrorMessage = error.Message;
-            job.LastErrorType = error.Type;
-            job.LastErrorDetails = error.Details;
-
-            job.CompletedAt = DateTimeOffset.UtcNow;
-
-            // releasing locks
-            job.LockedBy = null;
-            job.LockedUntil = null;
-
-            job.AvailableAt = null;
-
-            try
-            {
-                await _context.SaveChangesAsync(cancellationToken);
                 return JobStateChangeResult.Applied;
             }
-            catch (DbUpdateConcurrencyException)
-            {
-                // token was changed between load and save
-                return JobStateChangeResult.LockTokenMismatch;
-            }
+
+            // 0 rows where updated
+            // worst case scenario 2 db round trips
+            return await DetermineStateChangeFailureAsync(
+                jobId,
+                lockToken,
+                cancellationToken);
         }
 
         public async Task<JobStateChangeResult> MarkRetryingAsync(Guid jobId, long lockToken, JobError error, DateTimeOffset nextRunAt, CancellationToken cancellationToken)
         {
-            var job = await GetJobForUpdate(jobId, cancellationToken);
+            var affectedRows = await _context.Jobs
+                .Where(job => job.Id == jobId && job.Status == JobStatus.Processing && job.LockToken == lockToken)
+                .ExecuteUpdateAsync(
+                    setter => setter
+                        .SetProperty(
+                            job => job.Status,
+                            JobStatus.Retrying)
+                        .SetProperty(
+                            job => job.CompletedAt,
+                            (DateTimeOffset?)null)
+                        .SetProperty(
+                            job => job.LockedBy,
+                            (string?)null)
+                        .SetProperty(
+                            job => job.LockedUntil,
+                            (DateTimeOffset?)null)
+                        .SetProperty(
+                            job => job.AvailableAt,
+                            nextRunAt)
+                        .SetProperty(
+                            job => job.LastErrorDetails,
+                            error.Details)
+                        .SetProperty(
+                            job => job.LastErrorMessage,
+                            error.Message)
+                        .SetProperty(
+                            job => job.LastErrorType,
+                            error.Type),
+                cancellationToken);
 
-            if (job is null)
+            if (affectedRows == 1)
             {
-                return JobStateChangeResult.NotFound;
+                return JobStateChangeResult.Applied;
             }
 
-            if (job.LockToken != lockToken)
-            {
-                return JobStateChangeResult.LockTokenMismatch;
-            }
-
-            job.Status = JobStatus.Retrying;
-
-            // internal error details
-            job.LastErrorMessage = error.Message;
-            job.LastErrorType = error.Type;
-            job.LastErrorDetails = error.Details;
-
-            job.AvailableAt = nextRunAt;
-
-            // if retrying, it has not completed job yet
-            job.CompletedAt = null;
-
-            // release lock of worker
-            job.LockedBy = null;
-            job.LockedUntil = null;
-
-            return JobStateChangeResult.Applied;
+            // 0 rows where updated
+            // worst case scenario 2 db round trips
+            return await DetermineStateChangeFailureAsync(
+                jobId,
+                lockToken,
+                cancellationToken);
         }
 
         public async Task<JobStateChangeResult> MarkSucceededAsync(Guid jobId, long lockToken, CancellationToken cancellationToken)
@@ -149,7 +165,7 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
         // handles jobs where status processing + expired jobs to retrying or failed
         // incrementing token while recovering, bacause old worker with old LockToken should not be able to carry on expired job after it hang or slept
-        public async Task RecoverExpiredJobsAsync(int batchSize, CancellationToken cancellationToken)
+        public async Task<int> RecoverExpiredJobsAsync(int batchSize, CancellationToken cancellationToken)
         {
             var claimed = await _context.Jobs.FromSqlInterpolated($"""
                 DECLARE @Now datetimeoffset(7) =
