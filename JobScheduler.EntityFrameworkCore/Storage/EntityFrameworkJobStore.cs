@@ -174,60 +174,83 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
         // handles jobs where status processing + expired jobs to retrying or failed
         // incrementing token while recovering, bacause old worker with old LockToken should not be able to carry on expired job after it hang or slept
-        public async Task<int> RecoverExpiredJobsAsync(int batchSize, CancellationToken cancellationToken)
+        public async Task<int> RecoverExpiredJobsAsync(int batchSize, TimeSpan recoveryDelay, CancellationToken cancellationToken)
         {
-            var claimed = await _context.Jobs.FromSqlInterpolated($"""
+            if (batchSize <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(batchSize),
+                    "Batch size must be greater than zero.");
+            }
+
+            if (recoveryDelay < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(recoveryDelay),
+                    "Recovery delay can not be negative.");
+            }
+
+            var recoveryDelayMilliseconds = checked((int)recoveryDelay.TotalMilliseconds);
+
+            var affectedRows = await _context.Database.ExecuteSqlInterpolatedAsync($"""
                 DECLARE @Now datetimeoffset(7) =
                     TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00');
 
                 ;WITH ExpiredJobs AS
                 (
-                    SELECT TOP (@BatchSize) *
-                    FROM dbo.Jobs WITH
+                    SELECT TOP ({batchSize}) *
+                    FROM [dbo].[Jobs] WITH
                     (
                         UPDLOCK,
                         READPAST,
                         ROWLOCK,
                         READCOMMITTEDLOCK
                     )
-                    WHERE Status = @Processing
-                      AND LockedUntil <= @Now
-                    ORDER BY LockedUntil
+                    WHERE [Status] = @Processing
+                      AND [LockedUntil] IS NOT NULL
+                      AND [LockedUntil]<= @Now
+                    ORDER BY [LockedUntil], [Id]
                 )
                 UPDATE ExpiredJobs
                 SET
-                    Status =
+                    [Status] =
                         CASE
-                            WHEN AttemptCount >= MaxAttempts
-                                THEN @Failed
-                            ELSE @Retrying
+                            WHEN [AttemptCount] >= [MaxAttempts]
+                                THEN {(int)JobStatus.Failed}
+                            ELSE {(int)JobStatus.Retrying}
                         END,
 
-                    AvailableAt =
+                    [AvailableAt] =
                         CASE
-                            WHEN AttemptCount >= MaxAttempts
+                            WHEN [AttemptCount] >= [MaxAttempts]
                                 THEN NULL
-                            ELSE DATEADD(SECOND, @RecoveryDelaySeconds, @Now)
+                            ELSE DATEADD(MILLISECOND, {recoveryDelayMilliseconds}, @Now)
                         END,
 
-                    CompletedAt =
+                    [CompletedAt] =
                         CASE
-                            WHEN AttemptCount >= MaxAttempts
+                            WHEN [AttemptCount] >= [MaxAttempts]
                                 THEN @Now
                             ELSE NULL
                         END,
 
-                    LastErrorMessage = 'Worker lease expired before completion.',
-                    LastErrorType = 'JobLeaseExpired',
-                    LockedBy = NULL,
-                    LockedUntil = NULL,
-                    LockToken = LockToken + 1,
+                    [LastErrorMessage] =
+                    'Worker lease expired before completion.',
+
+                    [LastErrorType] =
+                        'JobLeaseExpired',
+
+                    [LastErrorDetails] = NULL,
+
+                    [LockedBy] = NULL,
+                    [LockedUntil] = NULL,
+
+                    [LockToken] = [LockToken] + 1,
 
                     UpdatedAt = @Now;
-            """).AsNoTracking().ToListAsync(cancellationToken);
+            """, cancellationToken);
 
-            var entity = claimed.SingleOrDefault();
-            // TODO: change return type
+            return affectedRows;
         }
 
         // TESTING: trying to use READPAST/UPDLOCK/ROWLOCK so no worker can access and lock job between select and update
