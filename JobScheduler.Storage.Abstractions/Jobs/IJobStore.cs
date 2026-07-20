@@ -35,6 +35,7 @@
 
         Task<int> RecoverExpiredJobsAsync(
             int batchSize,
+            TimeSpan recoveryDelay,
             CancellationToken cancellationToken);
     }
 }
