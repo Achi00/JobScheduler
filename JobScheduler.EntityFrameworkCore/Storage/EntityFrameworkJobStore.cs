@@ -4,6 +4,7 @@ using JobScheduler.EntityFrameworkCore.Persistence.Context;
 using JobScheduler.Storage.Abstractions.Jobs;
 using JobScheduler.Storage.EntityFrameworkCore.Interfaces;
 using JobScheduler.Storage.EntityFrameworkCore.Mappers;
+using JobScheduler.Storage.EntityFrameworkCore.Readers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
@@ -185,81 +186,43 @@ namespace JobScheduler.EntityFrameworkCore.Storage
         // incrementing token while recovering, bacause old worker with old LockToken should not be able to carry on expired job after it hang or slept
         public async Task<int> RecoverExpiredJobsAsync(int batchSize, TimeSpan recoveryDelay, CancellationToken cancellationToken)
         {
-            if (batchSize <= 0)
+            var connection = _context.Database.GetDbConnection();
+
+            var shouldClose =
+                connection.State != ConnectionState.Open;
+
+            if (shouldClose)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(batchSize),
-                    "Batch size must be greater than zero.");
+                await connection.OpenAsync(cancellationToken);
             }
 
-            if (recoveryDelay < TimeSpan.Zero)
+            try
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(recoveryDelay),
-                    "Recovery delay can not be negative.");
+                await using var command =
+                    _providerOperations.CreateRecoverExpiredJobsCommand(
+                        connection,
+                        batchSize,
+                        recoveryDelay);
+
+                var currentTransaction =
+                    _context.Database.CurrentTransaction;
+
+                if (currentTransaction is not null)
+                {
+                    command.Transaction =
+                        currentTransaction.GetDbTransaction();
+                }
+
+                return await command.ExecuteNonQueryAsync(
+                    cancellationToken);
             }
-
-            var recoveryDelayMilliseconds = checked((int)recoveryDelay.TotalMilliseconds);
-
-            var affectedRows = await _context.Database.ExecuteSqlInterpolatedAsync($"""
-                DECLARE @Now datetimeoffset(7) =
-                    TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00');
-
-                ;WITH ExpiredJobs AS
-                (
-                    SELECT TOP ({batchSize}) *
-                    FROM [dbo].[Jobs] WITH
-                    (
-                        UPDLOCK,
-                        READPAST,
-                        ROWLOCK,
-                        READCOMMITTEDLOCK
-                    )
-                    WHERE [Status] = @Processing
-                      AND [LockedUntil] IS NOT NULL
-                      AND [LockedUntil]<= @Now
-                    ORDER BY [LockedUntil], [Id]
-                )
-                UPDATE ExpiredJobs
-                SET
-                    [Status] =
-                        CASE
-                            WHEN [AttemptCount] >= [MaxAttempts]
-                                THEN {(int)JobStatus.Failed}
-                            ELSE {(int)JobStatus.Retrying}
-                        END,
-
-                    [AvailableAt] =
-                        CASE
-                            WHEN [AttemptCount] >= [MaxAttempts]
-                                THEN NULL
-                            ELSE DATEADD(MILLISECOND, {recoveryDelayMilliseconds}, @Now)
-                        END,
-
-                    [CompletedAt] =
-                        CASE
-                            WHEN [AttemptCount] >= [MaxAttempts]
-                                THEN @Now
-                            ELSE NULL
-                        END,
-
-                    [LastErrorMessage] =
-                    'Worker lease expired before completion.',
-
-                    [LastErrorType] =
-                        'JobLeaseExpired',
-
-                    [LastErrorDetails] = NULL,
-
-                    [LockedBy] = NULL,
-                    [LockedUntil] = NULL,
-
-                    [LockToken] = [LockToken] + 1,
-
-                    UpdatedAt = @Now;
-            """, cancellationToken);
-
-            return affectedRows;
+            finally
+            {
+                if (shouldClose)
+                {
+                    await connection.CloseAsync();
+                }
+            }
         }
 
         // TESTING: trying to use READPAST/UPDLOCK/ROWLOCK so no worker can access and lock job between select and update
@@ -286,13 +249,29 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                 }
 
                 await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-            }
-            catch (Exception)
-            {
-                
 
+                if (!await reader.ReadAsync(cancellationToken))
+                {
+                    return null;
+                }
+
+                // returns JobEntity
+                var entity = JobEntityDataReader.Read(reader);
+
+                if (await reader.ReadAsync(cancellationToken))
+                {
+                    throw new InvalidOperationException("The claim operation returned more than one job.");
+                }
+
+                return JobEntityMapper.ToRecord(entity);
             }
-                return null;
+            finally
+            {
+                if (shouldClose)
+                {
+                    await connection.CloseAsync();
+                }
+            }
         }
 
         // returns appropriate job state value base on what condition job is at
