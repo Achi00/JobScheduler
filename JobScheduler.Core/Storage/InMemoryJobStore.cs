@@ -214,5 +214,10 @@ namespace JobScheduler.Core.Storage
                 return Task.FromResult(job is null ? null : Clone(job));
             }
         }
+
+        public Task<int> RecoverExpiredJobsAsync(int batchSize, TimeSpan recoveryDelay, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

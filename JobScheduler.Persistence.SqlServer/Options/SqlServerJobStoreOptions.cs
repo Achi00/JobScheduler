@@ -1,6 +1,6 @@
-﻿using JobScheduler.Persistence.SqlServer.Enums;
+﻿using JobScheduler.Storage.SqlServer.Enums;
 
-namespace JobScheduler.Persistence.SqlServer.Options
+namespace JobScheduler.Storage.SqlServer.Options
 {
     public sealed class SqlServerJobStoreOptions
     {

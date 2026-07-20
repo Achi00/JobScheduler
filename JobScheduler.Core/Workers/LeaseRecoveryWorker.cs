@@ -34,6 +34,7 @@ namespace JobScheduler.Core.Workers
 
                     var recovered = await store.RecoverExpiredJobsAsync(
                         _options.LeaseRecoveryBatchSize,
+                        _options.LeaseRecoveryInterval,
                         stoppingToken);
 
                     if (recovered > 0)

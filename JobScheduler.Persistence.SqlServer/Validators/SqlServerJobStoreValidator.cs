@@ -1,4 +1,4 @@
-﻿namespace JobScheduler.Persistence.SqlServer.Validators
+﻿namespace JobScheduler.Storage.SqlServer.Validators
 {
     internal class SqlServerJobStoreValidator
     {

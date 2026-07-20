@@ -1,4 +1,4 @@
-﻿namespace JobScheduler.Persistence.SqlServer.Enums
+﻿namespace JobScheduler.Storage.SqlServer.Enums
 {
     public enum RcsiValidationMode
     {
