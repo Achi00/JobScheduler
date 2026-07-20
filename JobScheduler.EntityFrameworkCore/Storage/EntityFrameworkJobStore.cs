@@ -21,12 +21,13 @@ namespace JobScheduler.EntityFrameworkCore.Storage
     public sealed class EntityFrameworkJobStore : IJobStore
     {
         private readonly JobSchedulerDbContext _context;
-        private readonly IJobStoreProviderOperations _providerOperations;
+            //SqlServerJobStoreCommandFactory : IJobStoreCommandFactory
+        private readonly IJobStoreCommandFactory _providerFactory;
 
-        public EntityFrameworkJobStore(JobSchedulerDbContext context, IJobStoreProviderOperations providerOperations)
+        public EntityFrameworkJobStore(JobSchedulerDbContext context, IJobStoreCommandFactory providerOperations)
         {
             _context = context;
-            _providerOperations = providerOperations;
+            _providerFactory = providerOperations;
         }
         public Task CreateAsync(JobRecord job, CancellationToken cancellationToken)
         {
@@ -199,7 +200,7 @@ namespace JobScheduler.EntityFrameworkCore.Storage
             try
             {
                 await using var command =
-                    _providerOperations.CreateRecoverExpiredJobsCommand(
+                    _providerFactory.CreateRecoverExpiredJobsCommand(
                         connection,
                         batchSize,
                         recoveryDelay);
@@ -239,7 +240,7 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
             try
             {
-                await using var command = _providerOperations.CreateClaimNextRunnableJobCommand(connection, workerId, lockDuration);
+                await using var command = _providerFactory.CreateClaimNextRunnableJobCommand(connection, workerId, lockDuration);
 
                 var currentTransaction = _context.Database.CurrentTransaction;
 
