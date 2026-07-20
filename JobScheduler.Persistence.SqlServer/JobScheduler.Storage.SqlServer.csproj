@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\JobScheduler.EntityFrameworkCore\JobScheduler.Storage.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\JobScheduler.Storage.Abstractions\JobScheduler.Storage.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>

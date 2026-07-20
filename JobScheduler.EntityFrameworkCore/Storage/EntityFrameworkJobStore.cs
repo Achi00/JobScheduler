@@ -2,20 +2,30 @@
 using JobScheduler.EntityFrameworkCore.Entities;
 using JobScheduler.EntityFrameworkCore.Persistence.Context;
 using JobScheduler.Storage.Abstractions.Jobs;
+using JobScheduler.Storage.EntityFrameworkCore.Interfaces;
 using JobScheduler.Storage.EntityFrameworkCore.Mappers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using System.Data;
 
 namespace JobScheduler.EntityFrameworkCore.Storage
 {
     // TODO: add strict expiration together with a heartbeat/lease-renewal mechanism
     // currently only LockToken matching is used
+
+    /*
+     * TODO: TryClaimNextRunnableJobAsync, RecoverExpiredJobsAsync, ValidateReadCommittedSnapshotAsync 
+     * should be moved in SQL Server specific project 
+     */
     public sealed class EntityFrameworkJobStore : IJobStore
     {
         private readonly JobSchedulerDbContext _context;
+        private readonly IJobStoreProviderOperations _providerOperations;
 
-        public EntityFrameworkJobStore(JobSchedulerDbContext context)
+        public EntityFrameworkJobStore(JobSchedulerDbContext context, IJobStoreProviderOperations providerOperations)
         {
             _context = context;
+            _providerOperations = providerOperations;
         }
         public Task CreateAsync(JobRecord job, CancellationToken cancellationToken)
         {
@@ -255,84 +265,34 @@ namespace JobScheduler.EntityFrameworkCore.Storage
         // TESTING: trying to use READPAST/UPDLOCK/ROWLOCK so no worker can access and lock job between select and update
         public async Task<JobRecord?> TryClaimNextRunnableJobAsync(string workerId, TimeSpan lockDuration, CancellationToken cancellationToken)
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(workerId);
+            var connection = _context.Database.GetDbConnection();
 
-            if (lockDuration <= TimeSpan.Zero)
+            var shouldClose = connection.State != ConnectionState.Open;
+
+            if (shouldClose)
             {
-                throw new ArgumentOutOfRangeException(
-                    nameof(lockDuration),
-                    "Lock duration must be greater than zero.");
+                await connection.OpenAsync(cancellationToken);
             }
 
-            var lockDurationMilliseconds = checked((int)lockDuration.TotalMilliseconds);
+            try
+            {
+                await using var command = _providerOperations.CreateClaimNextRunnableJobCommand(connection, workerId, lockDuration);
 
-            /*
-             * READCOMMITTEDLOCK - uses locks version of data and not snapshot to access this table
-             * UPDLOCK - lock candidate for someone who intending to update it
-             * READPAST - skip candidates already locked by another worker
-             * ROWLOCK - uses only indicidual row or key locking
-             * 
-             * if RCSI is enabled SQL Server and as default dont looks at current locked row, it reads older commited copy
-             * with READPAST it will skip currently locked rows
-             * Those two uses different stategies, in this query READCOMMITTEDLOCK is used for it to not read old row version
-             * and use locking based read, without this worked coup see older commited version of some job we have in db
-             */
+                var currentTransaction = _context.Database.CurrentTransaction;
 
-            var claimed = await _context.Jobs.FromSqlInterpolated($"""
-            DECLARE @Now datetimeoffset(7) =
-                TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00');
+                if (currentTransaction != null)
+                {
+                    command.Transaction = currentTransaction.GetDbTransaction();
+                }
 
-            ;WITH Candidate AS
-            (
-                SELECT TOP (1) *
-                FROM [dbo].[Jobs] WITH
-                (
-                    UPDLOCK,
-                    READPAST,
-                    ROWLOCK,
-                    READCOMMITTEDLOCK
-                )
-                WHERE [Status] IN
-                (
-                    {(int)JobStatus.Enqueued},
-                    {(int)JobStatus.Retrying},
-                    {(int)JobStatus.Scheduled}
-                )
-                  AND [AvailableAt] <= @Now
-                  AND
-                  (
-                      [LockedUntil] IS NULL
-                      OR [LockedUntil] <= @Now
-                  )
-                ORDER BY
-                    [AvailableAt],
-                    [CreatedAt]
-            )
-            UPDATE Candidate
-            SET
-                [Status] = {(int)JobStatus.Processing},
-                [LockedBy] = {workerId},
-                [LockedUntil] =
-                    DATEADD(MILLISECOND, {lockDurationMilliseconds}, @Now),
-                [LockToken] = [LockToken] + 1,
-                [AttemptCount] = [AttemptCount] + 1,
-                [AvailableAt] = NULL,
-                [StartedAt] = @Now,
-                [UpdatedAt] = @Now
-            OUTPUT INSERTED.*;
-            """).AsNoTracking().ToListAsync(cancellationToken);
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            }
+            catch (Exception)
+            {
+                
 
-            var entity = claimed.SingleOrDefault();
-
-            return entity is null ? null : JobEntityMapper.ToRecord(entity);
-        }
-
-        // includes ef core tracking, can be modified
-        private async Task<JobEntity?> GetJobForUpdate(Guid jobId, CancellationToken cancellationToken)
-        {
-            var job = await _context.Jobs.FirstOrDefaultAsync(x => x.Id == jobId, cancellationToken);
-
-            return job;
+            }
+                return null;
         }
 
         // returns appropriate job state value base on what condition job is at
