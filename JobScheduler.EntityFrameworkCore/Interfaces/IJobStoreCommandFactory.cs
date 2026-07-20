@@ -3,7 +3,7 @@
 namespace JobScheduler.Storage.EntityFrameworkCore.Interfaces
 {
     // provider only deals with sql text, parameters, server locking, ect...
-    public interface IJobStoreProviderOperations
+    public interface IJobStoreCommandFactory
     {
         DbCommand CreateClaimNextRunnableJobCommand(
             DbConnection connection,

@@ -5,19 +5,19 @@ using JobScheduler.Abstractions.Jobs.Enums;
 
 namespace JobScheduler.Storage.SqlServer.Provider
 {
-    internal sealed class SqlServerJobStoreProviderOperations : IJobStoreProviderOperations
+    internal sealed class SqlServerJobStoreCommandFactory : IJobStoreCommandFactory
     {
         /*
-             * READCOMMITTEDLOCK - uses locks version of data and not snapshot to access this table
-             * UPDLOCK - lock candidate for someone who intending to update it
-             * READPAST - skip candidates already locked by another worker
-             * ROWLOCK - uses only indicidual row or key locking
-             * 
-             * if RCSI is enabled SQL Server and as default dont looks at current locked row, it reads older commited copy
-             * with READPAST it will skip currently locked rows
-             * Those two uses different stategies, in this query READCOMMITTEDLOCK is used for it to not read old row version
-             * and use locking based read, without this worked coup see older commited version of some job we have in db
-             */
+         * READCOMMITTEDLOCK - uses locks version of data and not snapshot to access this table
+         * UPDLOCK - lock candidate for someone who intending to update it
+         * READPAST - skip candidates already locked by another worker
+         * ROWLOCK - uses only indicidual row or key locking
+         * 
+         * if RCSI is enabled SQL Server and as default dont looks at current locked row, it reads older commited copy
+         * with READPAST it will skip currently locked rows
+         * Those two uses different stategies, in this query READCOMMITTEDLOCK is used for it to not read old row version
+         * and use locking based read, without this worked coup see older commited version of some job we have in db
+         */
         public DbCommand CreateClaimNextRunnableJobCommand(
             DbConnection connection,
             string workerId,
