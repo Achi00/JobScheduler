@@ -1,7 +1,9 @@
 using JobScheduler.Client.Email.Failure;
 using JobScheduler.Client.Email.Success;
 using JobScheduler.Core.DependencyInjection;
+using JobScheduler.Storage.SqlServer.DependencyInjection;
 using JobScheduler.EntityFrameworkCore.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +18,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddJobSchedulerCore();
 
 builder.Services.AddSqlServerJobStorage(builder.Configuration.GetConnectionString("Default")!);
+builder.Services.AddEntityFrameworkJobStorage(options => options.UseSqlServer("DefaultConnection"));
 
 // add custom job handlers
 builder.Services.AddJob<SendEmailJob, SendEmailJobHandler>();
