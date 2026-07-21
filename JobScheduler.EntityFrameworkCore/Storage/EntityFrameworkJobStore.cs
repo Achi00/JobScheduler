@@ -186,94 +186,34 @@ namespace JobScheduler.EntityFrameworkCore.Storage
         }
         // handles jobs where status processing + expired jobs to retrying or failed
         // incrementing token while recovering, bacause old worker with old LockToken should not be able to carry on expired job after it hang or slept
-        public async Task<int> RecoverExpiredJobsAsync(int batchSize, TimeSpan recoveryDelay, CancellationToken cancellationToken)
+        // no async, avoid spaming async state machine
+        public Task<int> RecoverExpiredJobsAsync(int batchSize, TimeSpan recoveryDelay, CancellationToken cancellationToken)
         {
-            var connection = _context.Database.GetDbConnection();
-
-            var shouldClose =
-                connection.State != ConnectionState.Open;
-
-            if (shouldClose)
-            {
-                await connection.OpenAsync(cancellationToken);
-            }
-
-            try
-            {
-                await using var command =
+            // gets or opens connection, returnes job recovery command db query
+            return ExecuteProviderCommandAsync(
+                connection =>
                     _providerFactory.CreateRecoverExpiredJobsCommand(
                         connection,
                         batchSize,
-                        recoveryDelay);
-
-                var currentTransaction =
-                    _context.Database.CurrentTransaction;
-
-                if (currentTransaction is not null)
-                {
-                    command.Transaction =
-                        currentTransaction.GetDbTransaction();
-                }
-
-                return await command.ExecuteNonQueryAsync(
-                    cancellationToken);
-            }
-            finally
-            {
-                if (shouldClose)
-                {
-                    await connection.CloseAsync();
-                }
-            }
+                        recoveryDelay),
+                        // static lampda wont capture outside local variables or this
+                        // could be benefitial to avoid closure allocation??
+                        static (command, ct) => command.ExecuteNonQueryAsync(ct),
+                cancellationToken);
         }
 
         // TESTING: trying to use READPAST/UPDLOCK/ROWLOCK so no worker can access and lock job between select and update
-        public async Task<JobRecord?> TryClaimNextRunnableJobAsync(string workerId, TimeSpan lockDuration, CancellationToken cancellationToken)
+        // no async, avoids spaming async state machine
+        public Task<JobRecord?> TryClaimNextRunnableJobAsync(string workerId, TimeSpan lockDuration, CancellationToken cancellationToken)
         {
-            var connection = _context.Database.GetDbConnection();
-
-            var shouldClose = connection.State != ConnectionState.Open;
-
-            if (shouldClose)
-            {
-                await connection.OpenAsync(cancellationToken);
-            }
-
-            try
-            {
-                await using var command = _providerFactory.CreateClaimNextRunnableJobCommand(connection, workerId, lockDuration);
-
-                var currentTransaction = _context.Database.CurrentTransaction;
-
-                if (currentTransaction != null)
-                {
-                    command.Transaction = currentTransaction.GetDbTransaction();
-                }
-
-                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-
-                if (!await reader.ReadAsync(cancellationToken))
-                {
-                    return null;
-                }
-
-                // returns JobEntity
-                var entity = JobEntityDataReader.Read(reader);
-
-                if (await reader.ReadAsync(cancellationToken))
-                {
-                    throw new InvalidOperationException("The claim operation returned more than one job.");
-                }
-
-                return JobEntityMapper.ToRecord(entity);
-            }
-            finally
-            {
-                if (shouldClose)
-                {
-                    await connection.CloseAsync();
-                }
-            }
+            return ExecuteProviderCommandAsync(
+                connection =>
+                    _providerFactory.CreateClaimNextRunnableJobCommand(
+                        connection,
+                        workerId,
+                        lockDuration),
+                ReadClaimedJobAsync, 
+                cancellationToken);
         }
 
         // gets/opens connection, creates command, attach to current transaction, execute, close if this method opened it
@@ -340,6 +280,30 @@ namespace JobScheduler.EntityFrameworkCore.Storage
             }
 
             return JobStateChangeResult.InvalidState;
+        }
+
+        // db -> JobRecord
+        private static async Task<JobRecord?> ReadClaimedJobAsync(
+            DbCommand command,
+            CancellationToken cancellationToken)
+        {
+            await using var reader =
+                await command.ExecuteReaderAsync(cancellationToken);
+
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                return null;
+            }
+
+            var entity = JobEntityDataReader.Read(reader);
+
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    "The claim operation returned more than one job.");
+            }
+
+            return JobEntityMapper.ToRecord(entity);
         }
     }
 }

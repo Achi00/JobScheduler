@@ -1,6 +1,7 @@
 using JobScheduler.Client.Email.Failure;
 using JobScheduler.Client.Email.Success;
 using JobScheduler.Core.DependencyInjection;
+using JobScheduler.EntityFrameworkCore.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,8 @@ builder.Services.AddSwaggerGen();
 
 // register my job scheduler DI
 builder.Services.AddJobSchedulerCore();
+
+builder.Services.AddEntityFrameworkJobStorage(builder.Configuration.GetConnectionString("Default")!);
 
 // add custom job handlers
 builder.Services.AddJob<SendEmailJob, SendEmailJobHandler>();
