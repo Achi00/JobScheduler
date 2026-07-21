@@ -16,7 +16,6 @@ namespace JobScheduler.EntityFrameworkCore.DependencyInjection
             services.AddDbContext<JobSchedulerDbContext>(configureDbContext);
 
             services.AddScoped<IJobStore, EntityFrameworkJobStore>();
-            services.AddScoped<IUnitOfWork, UnitOfWork>();
 
             return services;
         }

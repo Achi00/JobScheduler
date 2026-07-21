@@ -11,19 +11,14 @@ namespace JobScheduler.Storage.SqlServer.DependencyInjection
     public static class SqlServerStorageExtensions
     {
         public static IServiceCollection AddSqlServerJobStorage(
-        this IServiceCollection services,
-        string connectionString,
-        Action<SqlServerJobStoreOptions>? configure = null)
+            this IServiceCollection services,
+            string connectionString,
+            Action<SqlServerJobStoreOptions>? configure = null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
             services.AddEntityFrameworkJobStorage(options => options.UseSqlServer(connectionString));
-
-            services.AddDbContext<JobSchedulerDbContext>(options =>
-            {
-                options.UseSqlServer(connectionString);
-            });
-
+            
             services.AddOptions<SqlServerJobStoreOptions>();
 
             if (configure is not null)
