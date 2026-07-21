@@ -8,6 +8,7 @@ using JobScheduler.Storage.EntityFrameworkCore.Readers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
+using System.Data.Common;
 
 namespace JobScheduler.EntityFrameworkCore.Storage
 {
@@ -265,6 +266,43 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                 }
 
                 return JobEntityMapper.ToRecord(entity);
+            }
+            finally
+            {
+                if (shouldClose)
+                {
+                    await connection.CloseAsync();
+                }
+            }
+        }
+
+        // gets/opens connection, creates command, attach to current transaction, execute, close if this method opened it
+        private async Task<TResult> ExecuteProviderCommandAsync<TResult>(
+            Func<DbConnection, DbCommand> commandFactory,
+            Func<DbCommand, CancellationToken, Task<TResult>> execute,
+            CancellationToken cancellationToken)
+        {
+            var connection = _context.Database.GetDbConnection();
+
+            var shouldClose = connection.State != ConnectionState.Open;
+
+            if (shouldClose)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+
+            try
+            {
+                await using var command = commandFactory(connection);
+
+                var currentTransaction = _context.Database.CurrentTransaction;
+
+                if (currentTransaction != null)
+                {
+                    command.Transaction = currentTransaction.GetDbTransaction();
+                }
+
+                return await execute(command, cancellationToken);
             }
             finally
             {
