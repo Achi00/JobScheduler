@@ -7,7 +7,7 @@ namespace JobScheduler.EntityFrameworkCore.Persistence.Context
     {
         internal DbSet<JobEntity> Jobs => Set<JobEntity>();
         internal DbSet<JobStateEntity> JobStates => Set<JobStateEntity>();
-        public JobSchedulerDbContext()
+        public JobSchedulerDbContext(DbContextOptions<JobSchedulerDbContext> options) : base(options)
         {
         }
 
