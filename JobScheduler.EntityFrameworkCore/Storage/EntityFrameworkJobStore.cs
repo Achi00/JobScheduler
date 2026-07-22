@@ -30,11 +30,12 @@ namespace JobScheduler.EntityFrameworkCore.Storage
             _context = context;
             _providerFactory = providerOperations;
         }
-        public Task CreateAsync(JobRecord job, CancellationToken cancellationToken)
+        public async Task CreateAsync(JobRecord job, CancellationToken cancellationToken)
         {
-            _context.Add(job);
+            var entity = JobEntityMapper.ToEntity(job);
+            _context.Jobs.Add(entity);
 
-            return Task.CompletedTask;
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         public async Task<JobRecord?> GetByIdAsync(Guid jobId, CancellationToken cancellationToken)
