@@ -18,7 +18,6 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddJobSchedulerCore();
 
 builder.Services.AddSqlServerJobStorage(builder.Configuration.GetConnectionString("Default")!);
-builder.Services.AddEntityFrameworkJobStorage(options => options.UseSqlServer("DefaultConnection"));
 
 // add custom job handlers
 builder.Services.AddJob<SendEmailJob, SendEmailJobHandler>();
