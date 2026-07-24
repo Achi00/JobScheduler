@@ -2,7 +2,6 @@ using JobScheduler.Client.Email.Failure;
 using JobScheduler.Client.Email.Success;
 using JobScheduler.Core.DependencyInjection;
 using JobScheduler.Storage.SqlServer.DependencyInjection;
-using JobScheduler.EntityFrameworkCore.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);

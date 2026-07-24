@@ -30,8 +30,7 @@ namespace JobScheduler.Core
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = JobStatus.Enqueued,
                 CreatedAt = DateTimeOffset.UtcNow,
-                // if AvailableAt is null, means runnable immediately
-                AvailableAt = null,
+                AvailableAt = DateTimeOffset.UtcNow,
                 AttemptCount = 0,
                 MaxAttempts = _options.DefaultMaxAttempts
             };
