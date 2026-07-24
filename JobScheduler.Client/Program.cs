@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// TODO: add CleanupWorker, MetricsWorker... hosted services in future
+
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -15,6 +17,7 @@ builder.Services.AddSwaggerGen();
 
 // register my job scheduler DI
 builder.Services.AddJobSchedulerCore();
+builder.Services.AddJobSchedulerServer();
 
 builder.Services.AddSqlServerJobStorage(builder.Configuration.GetConnectionString("Default")!);
 

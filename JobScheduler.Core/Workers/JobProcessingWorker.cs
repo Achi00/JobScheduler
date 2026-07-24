@@ -9,18 +9,18 @@ using Microsoft.Extensions.Options;
 namespace JobScheduler.Core.HostedServices
 {
     // finds or claims runnable job, executes it, marks it as succeeded/failed/retrying ect..
-    internal sealed class JobWorkerHostedService : BackgroundService
+    internal sealed class JobProcessingWorker : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
         // using IOptionsMonitor for live config update, this service is always singleton, otherwise IOptions
         private readonly IOptionsMonitor<JobSchedulerOptions> _options;
-        private readonly ILogger<JobWorkerHostedService> _logger;
+        private readonly ILogger<JobProcessingWorker> _logger;
         private readonly string _workerId = $"{Environment.MachineName}-{Guid.NewGuid():N}";
 
-        public JobWorkerHostedService(
+        public JobProcessingWorker(
             IServiceScopeFactory scopeFactory,
             IOptionsMonitor<JobSchedulerOptions> options,
-            ILogger<JobWorkerHostedService> logger)
+            ILogger<JobProcessingWorker> logger)
         {
             _scopeFactory = scopeFactory;
             _options = options;

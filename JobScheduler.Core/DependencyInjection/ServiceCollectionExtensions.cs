@@ -48,7 +48,7 @@ namespace JobScheduler.Core.DependencyInjection
 
         public static IServiceCollection AddJobSchedulerServer(this IServiceCollection services)
         {
-            services.AddHostedService<JobWorkerHostedService>();
+            services.AddHostedService<JobProcessingWorker>();
             services.AddHostedService<LeaseRecoveryWorker>();
 
             return services;
