@@ -4,6 +4,7 @@ using JobScheduler.Core.HostedServices;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
 using JobScheduler.Core.Storage;
+using JobScheduler.Core.Workers;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,7 +18,6 @@ namespace JobScheduler.Core.DependencyInjection
             Action<JobSchedulerOptions>? configure = null
         )
         {
-
             var optionsBuilder = services.AddOptions<JobSchedulerOptions>();
 
             if (configure != null)
@@ -43,7 +43,13 @@ namespace JobScheduler.Core.DependencyInjection
             services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
             services.AddScoped<JobProcessor>();
 
+            return services;
+        }
+
+        public static IServiceCollection AddJobSchedulerServer(this IServiceCollection services)
+        {
             services.AddHostedService<JobWorkerHostedService>();
+            services.AddHostedService<LeaseRecoveryWorker>();
 
             return services;
         }
