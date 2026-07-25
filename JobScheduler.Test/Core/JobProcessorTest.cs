@@ -1,8 +1,10 @@
-﻿using JobScheduler.Core.Options;
+﻿using JobScheduler.Core.Execution;
+using JobScheduler.Core.Options;
+using JobScheduler.Core.Registry;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.DependencyInjection;
-using JobScheduler.Core.Registry;
-using JobScheduler.Core.Execution;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace JobScheduler.Test.Core
@@ -13,6 +15,8 @@ namespace JobScheduler.Test.Core
         private readonly Mock<IJobStore> _jobStoreMock;
         private readonly Mock<IServiceScopeFactory> _scopeFactoryMock;
         private readonly Mock<IJobRegistry> _jobRegistryMock;
+        private readonly Mock<ILogger<JobProcessor>> _loggerMock;
+
 
         private readonly JobSchedulerOptions _options;
 
@@ -21,6 +25,7 @@ namespace JobScheduler.Test.Core
             _jobStoreMock = new();
             _scopeFactoryMock = new();
             _jobRegistryMock = new();
+            _loggerMock = new();
 
             _options = new JobSchedulerOptions
             {
@@ -34,7 +39,8 @@ namespace JobScheduler.Test.Core
                 _jobStoreMock.Object,
                 _jobRegistryMock.Object,
                 _scopeFactoryMock.Object,
-                _options);
+                Options.Create(_options),
+                _loggerMock.Object);
         }
     }
 }
