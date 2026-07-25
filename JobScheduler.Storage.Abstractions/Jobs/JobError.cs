@@ -1,6 +1,6 @@
-﻿namespace JobScheduler.Core.Errors
+﻿namespace JobScheduler.Storage.Abstractions.Jobs
 {
-    internal sealed record JobError(string Message, string Type, string Details)
+    public sealed record JobError(string Message, string Type, string Details)
     {
         public static JobError FromException(Exception exception)
         {

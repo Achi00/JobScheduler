@@ -1,10 +1,10 @@
 ﻿using JobScheduler.Abstractions.Jobs.Enums;
 
-namespace JobScheduler.Core.Storage
+namespace JobScheduler.Storage.Abstractions.Jobs
 {
     // when one execution should run/retry
     // when the next occurrence should be created we use RecurringJobRecord
-    internal sealed class JobRecord
+    public sealed class JobRecord
     {
         public Guid Id { get; set; }
         public string JobType { get; set; } = default!;

@@ -1,10 +1,9 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
 using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Enums;
-using JobScheduler.Core.Errors;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
-using JobScheduler.Core.Storage;
+using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -108,7 +107,7 @@ namespace JobScheduler.Core.Execution
         }
 
         private JobProcessResult HandleSucceededTransitionResult(
-            JobRecord job,
+            JobScheduler.Storage.Abstractions.Jobs.JobRecord job,
             JobStateChangeResult result)
         {
             switch (result)

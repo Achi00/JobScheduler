@@ -4,6 +4,7 @@ using JobScheduler.Core.HostedServices;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
 using JobScheduler.Core.Storage;
+using JobScheduler.Core.Workers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace JobScheduler.Core.DependencyInjection
@@ -16,7 +17,6 @@ namespace JobScheduler.Core.DependencyInjection
             Action<JobSchedulerOptions>? configure = null
         )
         {
-
             var optionsBuilder = services.AddOptions<JobSchedulerOptions>();
 
             if (configure != null)
@@ -36,14 +36,19 @@ namespace JobScheduler.Core.DependencyInjection
                 "WorkerCount must be greater than zero.")
             .ValidateOnStart();
 
-            services.AddSingleton<IJobStore, InMemoryJobStore>();
             services.AddSingleton<JobRegistry>();
 
             services.AddScoped<IBackgroundJobClient, BackgroundJobClient>();
             services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
             services.AddScoped<JobProcessor>();
 
-            services.AddHostedService<JobWorkerHostedService>();
+            return services;
+        }
+
+        public static IServiceCollection AddJobSchedulerServer(this IServiceCollection services)
+        {
+            services.AddHostedService<JobProcessingWorker>();
+            services.AddHostedService<LeaseRecoveryWorker>();
 
             return services;
         }

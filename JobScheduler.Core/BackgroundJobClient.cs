@@ -2,7 +2,7 @@
 using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Options;
-using JobScheduler.Core.Storage;
+using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 
@@ -30,8 +30,7 @@ namespace JobScheduler.Core
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = JobStatus.Enqueued,
                 CreatedAt = DateTimeOffset.UtcNow,
-                // if AvailableAt is null, means runnable immediately
-                AvailableAt = null,
+                AvailableAt = DateTimeOffset.UtcNow,
                 AttemptCount = 0,
                 MaxAttempts = _options.DefaultMaxAttempts
             };

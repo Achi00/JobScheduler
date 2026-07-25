@@ -1,6 +1,6 @@
-﻿namespace JobScheduler.Core.Enums
+﻿namespace JobScheduler.Storage.Abstractions.Jobs
 {
-    internal enum JobStateChangeResult
+    public enum JobStateChangeResult
     {
         Applied = 1,
 

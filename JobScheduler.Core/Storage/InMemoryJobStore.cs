@@ -1,6 +1,5 @@
 ﻿using JobScheduler.Abstractions.Jobs.Enums;
-using JobScheduler.Core.Enums;
-using JobScheduler.Core.Errors;
+using JobScheduler.Storage.Abstractions.Jobs;
 
 namespace JobScheduler.Core.Storage
 {
@@ -120,7 +119,7 @@ namespace JobScheduler.Core.Storage
 
                 if (job.LockToken != lockToken)
                 {
-                    return Task.FromResult(JobStateChangeResult.NotFound);
+                    return Task.FromResult(JobStateChangeResult.LockTokenMismatch);
                 }
 
                 job.Status = JobStatus.Retrying;
@@ -156,7 +155,7 @@ namespace JobScheduler.Core.Storage
 
                 if (job.LockToken != lockToken)
                 {
-                    return Task.FromResult(JobStateChangeResult.NotFound);
+                    return Task.FromResult(JobStateChangeResult.LockTokenMismatch);
                 }
 
                 job.Status = JobStatus.Failed;
@@ -214,6 +213,11 @@ namespace JobScheduler.Core.Storage
 
                 return Task.FromResult(job is null ? null : Clone(job));
             }
+        }
+
+        public Task<int> RecoverExpiredJobsAsync(int batchSize, TimeSpan recoveryDelay, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
         }
     }
 }
