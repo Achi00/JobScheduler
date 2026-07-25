@@ -10,7 +10,7 @@ using Moq;
 namespace JobScheduler.Test.Core
 {
     // internal dependencis accessable by InternalsVisibleTo
-    internal class JobProcessorTest
+    public class JobProcessorTest
     {
         private readonly Mock<IJobStore> _jobStoreMock;
         private readonly Mock<IServiceScopeFactory> _scopeFactoryMock;
@@ -41,6 +41,48 @@ namespace JobScheduler.Test.Core
                 _scopeFactoryMock.Object,
                 Options.Create(_options),
                 _loggerMock.Object);
+        }
+
+        [Fact]
+        public async Task TryProcessOneAsync_WhenNoJobIsAvailable_ShouldReturnWithoutProcessing()
+        {
+            // arrange
+            _jobStoreMock.Setup(x => x.TryClaimNextRunnableJobAsync(
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()))
+                    .ReturnsAsync((JobRecord?)null
+            );
+
+            var processor = CreateProcessor();
+
+            // act
+            await processor.TryProcessOneAsync("worker-test-1", CancellationToken.None);
+
+            // assert
+            _jobStoreMock.Verify(
+                x => x.MarkSucceededAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            _jobStoreMock.Verify(
+                x => x.MarkRetryingAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<DateTimeOffset>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            _jobStoreMock.Verify(
+                x => x.MarkFailedAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
         }
     }
 }
