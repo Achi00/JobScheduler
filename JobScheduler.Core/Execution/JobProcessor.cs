@@ -16,14 +16,14 @@ namespace JobScheduler.Core.Execution
     internal sealed class JobProcessor : IJobProcessor
     {
         private readonly IJobStore _jobStore;
-        private readonly JobRegistry _jobRegistry;
+        private readonly IJobRegistry _jobRegistry;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly JobSchedulerOptions _options;
         private readonly ILogger<JobProcessor> _logger;
 
         public JobProcessor(
             IJobStore jobStore,
-            JobRegistry jobRegistry,
+            IJobRegistry jobRegistry,
             IServiceScopeFactory scopeFactory,
             IOptions<JobSchedulerOptions> options,
             ILogger<JobProcessor> logger)

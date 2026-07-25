@@ -16,4 +16,9 @@
     <ProjectReference Include="..\JobScheduler.Storage.Abstractions\JobScheduler.Storage.Abstractions.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+	  <InternalsVisibleTo Include="JobScheduler.Test" />
+	  <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
 </Project>

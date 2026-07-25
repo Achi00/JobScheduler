@@ -7,11 +7,12 @@ using Moq;
 
 namespace JobScheduler.Test.Core
 {
+    // internal dependencis accessable by InternalsVisibleTo
     internal class JobProcessorTest
     {
         private readonly Mock<IJobStore> _jobStoreMock;
         private readonly Mock<IServiceScopeFactory> _scopeFactoryMock;
-        private readonly Mock<JobRegistry> _jobRegistryMock;
+        private readonly Mock<IJobRegistry> _jobRegistryMock;
 
         private readonly JobSchedulerOptions _options;
 
