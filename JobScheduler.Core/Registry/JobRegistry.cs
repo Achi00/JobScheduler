@@ -3,7 +3,7 @@
 namespace JobScheduler.Core.Registry
 {
     // maps types to executors
-    internal sealed class JobRegistry
+    internal sealed class JobRegistry : IJobRegistry
     {
         private Dictionary<string, IJobExecutor> _executors;
 

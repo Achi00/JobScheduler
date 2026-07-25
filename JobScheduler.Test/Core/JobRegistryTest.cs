@@ -1,6 +1,6 @@
 ﻿namespace JobScheduler.Test.Core
 {
-    internal class JobProcessorTests
+    internal class JobRegistryTest
     {
     }
 }

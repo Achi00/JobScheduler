@@ -13,7 +13,7 @@ namespace JobScheduler.Core.Execution
     // job orcestrator, controls job lifecycle
     // TODO: claim job -> mark processing -> create JobExecutionContext -> find executor -> mark succeed/failed
     // FAILED: catch ex -> increment attempt -> if attempt < maxAttempts = mark retrying/scheduled, else mark failed
-    internal sealed class JobProcessor
+    internal sealed class JobProcessor : IJobProcessor
     {
         private readonly IJobStore _jobStore;
         private readonly JobRegistry _jobRegistry;
@@ -22,8 +22,8 @@ namespace JobScheduler.Core.Execution
         private readonly ILogger<JobProcessor> _logger;
 
         public JobProcessor(
-            IJobStore jobStore, 
-            JobRegistry jobRegistry, 
+            IJobStore jobStore,
+            JobRegistry jobRegistry,
             IServiceScopeFactory scopeFactory,
             IOptions<JobSchedulerOptions> options,
             ILogger<JobProcessor> logger)
@@ -59,11 +59,11 @@ namespace JobScheduler.Core.Execution
             try
             {
                 var executor = _jobRegistry.GetExecutor(job.JobType);
-                
+
                 _logger.LogInformation(
                     "Starting job {JobId} of type {JobType}, attempt {Attempt}",
-                    job.Id, 
-                    job.JobType, 
+                    job.Id,
+                    job.JobType,
                     job.AttemptCount
                 );
 
@@ -87,7 +87,7 @@ namespace JobScheduler.Core.Execution
             if (job.AttemptCount >= job.MaxAttempts)
             {
                 var result = await _jobStore.MarkFailedAsync(job.Id, job.LockToken, error, ct);
-                
+
                 return HandleFailedTransitionResult(job, result);
             }
 
@@ -96,10 +96,10 @@ namespace JobScheduler.Core.Execution
 
             var retryResult = await _jobStore
                 .MarkRetryingAsync(
-                    job.Id, 
-                    job.LockToken, 
-                    error, 
-                    DateTimeOffset.UtcNow.Add(delay), 
+                    job.Id,
+                    job.LockToken,
+                    error,
+                    DateTimeOffset.UtcNow.Add(delay),
                     ct
                 );
 
@@ -236,7 +236,7 @@ namespace JobScheduler.Core.Execution
                 1 => TimeSpan.FromSeconds(5),
                 2 => TimeSpan.FromSeconds(5),
                 3 => TimeSpan.FromSeconds(5),
-                _ => TimeSpan.FromSeconds(5) 
+                _ => TimeSpan.FromSeconds(5)
                 //1 => TimeSpan.FromSeconds(10),
                 //2 => TimeSpan.FromMinutes(1),
                 //3 => TimeSpan.FromMinutes(5),
