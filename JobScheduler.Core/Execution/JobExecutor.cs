@@ -1,5 +1,6 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
 using JobScheduler.Abstractions.Jobs.Interfaces;
+using JobScheduler.Core.Execution.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 

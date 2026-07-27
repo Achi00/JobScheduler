@@ -1,6 +1,6 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
 
-namespace JobScheduler.Core.Execution
+namespace JobScheduler.Core.Execution.Interfaces
 {
     internal interface IJobExecutor
     {

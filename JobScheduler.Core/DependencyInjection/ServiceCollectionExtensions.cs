@@ -1,5 +1,6 @@
 ﻿using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Core.Execution;
+using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.HostedServices;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
