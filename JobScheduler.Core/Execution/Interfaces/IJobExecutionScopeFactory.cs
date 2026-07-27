@@ -1,9 +1,8 @@
 ﻿using JobScheduler.Core.Registry;
-
 namespace JobScheduler.Core.Execution.Interfaces
 {
     internal interface IJobExecutionScopeFactory
     {
-        IJobRegistry CreateScope();
+        IJobExecutionScope CreateScope();
     }
 }
