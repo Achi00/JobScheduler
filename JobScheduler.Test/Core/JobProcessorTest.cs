@@ -1,4 +1,5 @@
-﻿using JobScheduler.Core.Execution;
+﻿using JobScheduler.Abstractions.Jobs.Enums;
+using JobScheduler.Core.Execution;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
 using JobScheduler.Storage.Abstractions.Jobs;
@@ -57,7 +58,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             // act
-            await processor.TryProcessOneAsync("worker-test-1", CancellationToken.None);
+            await processor.TryProcessOneAsync("worker-1", CancellationToken.None);
 
             // assert
             _jobStoreMock.Verify(
@@ -83,6 +84,43 @@ namespace JobScheduler.Test.Core
                     It.IsAny<JobError>(),
                     It.IsAny<CancellationToken>()),
                 Times.Never);
+        }
+
+        [Fact]
+        public async Task TryProcessOneAsync_WhenJobIsAvailable_ShouldContinueProcessing()
+        {
+            // Arrange
+            var job = new JobRecord
+            {
+                Id = Guid.NewGuid(),
+                JobType = "SendEmail",
+                PayloadJson = "{}",
+                Status = JobStatus.Enqueued,
+                AttemptCount = 0,
+                MaxAttempts = 3,
+                CreatedAt = DateTimeOffset.UtcNow,
+                AvailableAt = DateTimeOffset.UtcNow
+            };
+
+            _jobStoreMock
+                .Setup(x => x.TryClaimNextRunnableJobAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(job);
+
+            var processor = CreateProcessor();
+
+            // Act
+            await processor.TryProcessOneAsync("worker-1", CancellationToken.None);
+
+            // Assert
+            _jobStoreMock.Verify(
+                x => x.TryClaimNextRunnableJobAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
     }
 }
