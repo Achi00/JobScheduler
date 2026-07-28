@@ -19,6 +19,7 @@ namespace JobScheduler.Core.Execution
         private readonly IJobStore _jobStore;
         private readonly IJobRegistry _jobRegistry;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IJobExecutionScopeFactory _executionScopeFactory;
         private readonly JobSchedulerOptions _options;
         private readonly ILogger<JobProcessor> _logger;
 
@@ -26,12 +27,14 @@ namespace JobScheduler.Core.Execution
             IJobStore jobStore,
             IJobRegistry jobRegistry,
             IServiceScopeFactory scopeFactory,
+            IJobExecutionScopeFactory executionScopeFactory,
             IOptions<JobSchedulerOptions> options,
             ILogger<JobProcessor> logger)
         {
             _jobStore = jobStore;
             _jobRegistry = jobRegistry;
             _scopeFactory = scopeFactory;
+            _executionScopeFactory = executionScopeFactory;
             _options = options.Value;
             _logger = logger;
         }
@@ -46,7 +49,9 @@ namespace JobScheduler.Core.Execution
                 return JobProcessResult.NoJobAvailable;
             }
 
-            await using var scope = _scopeFactory.CreateAsyncScope();
+            var executor = _jobRegistry.GetExecutor(job.JobType);
+
+            await using var scope = _executionScopeFactory.CreateScope();
 
             var context = new JobExecutionContext
             (
@@ -59,8 +64,6 @@ namespace JobScheduler.Core.Execution
 
             try
             {
-                var executor = _executorResolver.Resolve(job.JobType);
-
                 _logger.LogInformation(
                     "Starting job {JobId} of type {JobType}, attempt {Attempt}",
                     job.Id,
