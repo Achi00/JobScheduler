@@ -1,8 +1,9 @@
 ﻿using JobScheduler.Core.Execution.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace JobScheduler.Core.Execution
+namespace JobScheduler.Core.Execution.Scope
 {
+    // creates scope in one place, moved from JobProcessor so it does not know anything about DI or job states and oposite
     internal sealed class ServiceProviderJobExecutionScopeFactory : IJobExecutionScopeFactory
     {
         private readonly IServiceScopeFactory _scopeFactory;

@@ -1,7 +1,7 @@
 ﻿using JobScheduler.Core.Execution.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace JobScheduler.Core.Execution
+namespace JobScheduler.Core.Execution.Scope
 {
     internal sealed class ServiceProviderJobExecutionScope : IJobExecutionScope
     {

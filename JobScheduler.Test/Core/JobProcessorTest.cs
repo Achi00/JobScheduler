@@ -1,11 +1,11 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
 using JobScheduler.Abstractions.Jobs.Enums;
+using JobScheduler.Core.Enums;
 using JobScheduler.Core.Execution;
 using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
 using JobScheduler.Storage.Abstractions.Jobs;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -132,7 +132,7 @@ namespace JobScheduler.Test.Core
 
             var result = await processor.TryProcessOneAsync("worker-1", CancellationToken.None);
 
-            Assert.True(result);
+            Assert.Equal(JobProcessResult.Succeeded, result);
             _jobStoreMock.Verify(s => s.MarkSucceededAsync(job.Id, job.LockToken, It.IsAny<CancellationToken>()), Times.Once);
         }
     }
