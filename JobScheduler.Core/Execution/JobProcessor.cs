@@ -18,7 +18,6 @@ namespace JobScheduler.Core.Execution
     {
         private readonly IJobStore _jobStore;
         private readonly IJobRegistry _jobRegistry;
-        private readonly IServiceScopeFactory _scopeFactory;
         private readonly IJobExecutionScopeFactory _executionScopeFactory;
         private readonly JobSchedulerOptions _options;
         private readonly ILogger<JobProcessor> _logger;
@@ -26,14 +25,12 @@ namespace JobScheduler.Core.Execution
         public JobProcessor(
             IJobStore jobStore,
             IJobRegistry jobRegistry,
-            IServiceScopeFactory scopeFactory,
             IJobExecutionScopeFactory executionScopeFactory,
             IOptions<JobSchedulerOptions> options,
             ILogger<JobProcessor> logger)
         {
             _jobStore = jobStore;
             _jobRegistry = jobRegistry;
-            _scopeFactory = scopeFactory;
             _executionScopeFactory = executionScopeFactory;
             _options = options.Value;
             _logger = logger;

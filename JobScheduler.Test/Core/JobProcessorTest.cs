@@ -1,5 +1,7 @@
-﻿using JobScheduler.Abstractions.Jobs.Enums;
+﻿using JobScheduler.Abstractions.Jobs.Contexts;
+using JobScheduler.Abstractions.Jobs.Enums;
 using JobScheduler.Core.Execution;
+using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
 using JobScheduler.Storage.Abstractions.Jobs;
@@ -14,7 +16,7 @@ namespace JobScheduler.Test.Core
     public class JobProcessorTest
     {
         private readonly Mock<IJobStore> _jobStoreMock;
-        private readonly Mock<IServiceScopeFactory> _scopeFactoryMock;
+        private readonly Mock<IJobExecutionScopeFactory> _executionScopeFactoryMock;
         private readonly Mock<IJobRegistry> _jobRegistryMock;
         private readonly Mock<ILogger<JobProcessor>> _loggerMock;
 
@@ -24,7 +26,7 @@ namespace JobScheduler.Test.Core
         public JobProcessorTest()
         {
             _jobStoreMock = new();
-            _scopeFactoryMock = new();
+            _executionScopeFactoryMock = new();
             _jobRegistryMock = new();
             _loggerMock = new();
 
@@ -39,7 +41,7 @@ namespace JobScheduler.Test.Core
             return new JobProcessor(
                 _jobStoreMock.Object,
                 _jobRegistryMock.Object,
-                _scopeFactoryMock.Object,
+                _executionScopeFactoryMock.Object,
                 Options.Create(_options),
                 _loggerMock.Object);
         }
@@ -109,18 +111,29 @@ namespace JobScheduler.Test.Core
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(job);
 
+            var executorMock = new Mock<IJobExecutor>();
+            executorMock
+                .Setup(e => e.ExecuteAsync(It.IsAny<IServiceProvider>(), It.IsAny<string>(), It.IsAny<JobExecutionContext>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            _jobRegistryMock
+                .Setup(r => r.GetExecutor("SendEmail"))
+                .Returns(executorMock.Object);
+
+            var scopeMock = new Mock<IJobExecutionScope>();
+            scopeMock.SetupGet(s => s.ServiceProvider).Returns(Mock.Of<IServiceProvider>());
+            scopeMock.Setup(s => s.DisposeAsync()).Returns(ValueTask.CompletedTask);
+
+            _executionScopeFactoryMock
+                .Setup(f => f.CreateScope())
+                .Returns(scopeMock.Object);
+
             var processor = CreateProcessor();
 
-            // Act
-            await processor.TryProcessOneAsync("worker-1", CancellationToken.None);
+            var result = await processor.TryProcessOneAsync("worker-1", CancellationToken.None);
 
-            // Assert
-            _jobStoreMock.Verify(
-                x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()),
-                Times.Once);
+            Assert.True(result);
+            _jobStoreMock.Verify(s => s.MarkSucceededAsync(job.Id, job.LockToken, It.IsAny<CancellationToken>()), Times.Once);
         }
     }
 }
