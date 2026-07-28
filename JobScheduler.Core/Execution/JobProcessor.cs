@@ -1,6 +1,7 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
 using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Enums;
+using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
 using JobScheduler.Storage.Abstractions.Jobs;
@@ -58,7 +59,7 @@ namespace JobScheduler.Core.Execution
 
             try
             {
-                var executor = _jobRegistry.GetExecutor(job.JobType);
+                var executor = _executorResolver.Resolve(job.JobType);
 
                 _logger.LogInformation(
                     "Starting job {JobId} of type {JobType}, attempt {Attempt}",
