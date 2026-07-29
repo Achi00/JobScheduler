@@ -108,7 +108,7 @@ namespace JobScheduler.Core.Execution
         }
 
         private JobProcessResult HandleSucceededTransitionResult(
-            JobScheduler.Storage.Abstractions.Jobs.JobRecord job,
+            JobRecord job,
             JobStateChangeResult result)
         {
             switch (result)
@@ -233,15 +233,15 @@ namespace JobScheduler.Core.Execution
         {
             return attemptCount switch
             {
-                // testing
-                1 => TimeSpan.FromSeconds(5),
-                2 => TimeSpan.FromSeconds(5),
-                3 => TimeSpan.FromSeconds(5),
-                _ => TimeSpan.FromSeconds(5)
-                //1 => TimeSpan.FromSeconds(10),
-                //2 => TimeSpan.FromMinutes(1),
-                //3 => TimeSpan.FromMinutes(5),
-                //_ => TimeSpan.FromMinutes(15)
+                //// testing
+                //1 => TimeSpan.FromSeconds(5),
+                //2 => TimeSpan.FromSeconds(5),
+                //3 => TimeSpan.FromSeconds(5),
+                //_ => TimeSpan.FromSeconds(5)
+                1 => TimeSpan.FromSeconds(10),
+                2 => TimeSpan.FromMinutes(1),
+                3 => TimeSpan.FromMinutes(5),
+                _ => TimeSpan.FromMinutes(15)
             };
         }
     }
