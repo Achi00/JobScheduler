@@ -165,15 +165,47 @@ namespace JobScheduler.Test.Core
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(job);
 
-            _jobStoreMock.Verify(
-                x => x.MarkRetryingAsync(
+            _jobStoreMock
+                .Setup(x => x.MarkRetryingAsync(
                     It.IsAny<Guid>(),
                     It.IsAny<long>(),
                     It.IsAny<JobError>(),
                     It.IsAny<DateTimeOffset>(),
-                    It.IsAny<CancellationToken>()),
-                Times.Once);
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(JobStateChangeResult.Applied);
 
+            var executorMock = new Mock<IJobExecutor>();
+
+            executorMock
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("Error!"));
+
+            _jobRegistryMock
+                .Setup(x => x.GetExecutor("SendEmail"))
+                .Returns(executorMock.Object);
+
+            var scopeMock = new Mock<IJobExecutionScope>();
+
+            scopeMock
+                .SetupGet(x => x.ServiceProvider)
+                .Returns(Mock.Of<IServiceProvider>());
+
+            _executionScopeFactoryMock
+                .Setup(x => x.CreateScope())
+                .Returns(scopeMock.Object);
+
+            // act
+            var processor = CreateProcessor();
+
+            var result = await processor.TryProcessOneAsync(
+                "worker-1",
+                CancellationToken.None);
+
+            // assert
             _jobStoreMock.Verify(
                 x => x.MarkFailedAsync(
                     It.IsAny<Guid>(),
@@ -189,14 +221,14 @@ namespace JobScheduler.Test.Core
                     It.IsAny<CancellationToken>()),
                 Times.Never);
 
-            var executorMock = new Mock<IJobExecutor>();
-            executorMock
-                .Setup(x => x.ExecuteAsync(
-                    It.IsAny<IServiceProvider>(),
-                    It.IsAny<string>(),
-                    It.IsAny<JobExecutionContext>(),
-                    It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("Error!"));
+            _jobStoreMock.Verify(
+                x => x.MarkRetryingAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<DateTimeOffset>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
     }
 }
