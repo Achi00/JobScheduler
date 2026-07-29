@@ -111,6 +111,13 @@ namespace JobScheduler.Test.Core
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(job);
 
+            _jobStoreMock
+                .Setup(s => s.MarkSucceededAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(JobStateChangeResult.Applied);
+
             var executorMock = new Mock<IJobExecutor>();
             executorMock
                 .Setup(e => e.ExecuteAsync(It.IsAny<IServiceProvider>(), It.IsAny<string>(), It.IsAny<JobExecutionContext>(), It.IsAny<CancellationToken>()))
