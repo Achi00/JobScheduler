@@ -142,5 +142,61 @@ namespace JobScheduler.Test.Core
             Assert.Equal(JobProcessResult.Succeeded, result);
             _jobStoreMock.Verify(s => s.MarkSucceededAsync(job.Id, job.LockToken, It.IsAny<CancellationToken>()), Times.Once);
         }
+
+        [Fact]
+        public async Task TryProcessOneAsync_WhenExecutionThrowsAndAttemptsRemain_ShouldScheduleRetry()
+        {
+            var job = new JobRecord
+            {
+                Id = Guid.NewGuid(),
+                JobType = "SendEmail",
+                PayloadJson = "{}",
+                Status = JobStatus.Enqueued,
+                AttemptCount = 0,
+                MaxAttempts = 3,
+                CreatedAt = DateTimeOffset.UtcNow,
+                AvailableAt = DateTimeOffset.UtcNow
+            };
+
+            _jobStoreMock
+                .Setup(x => x.TryClaimNextRunnableJobAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(job);
+
+            _jobStoreMock.Verify(
+                x => x.MarkRetryingAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<DateTimeOffset>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            _jobStoreMock.Verify(
+                x => x.MarkFailedAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            _jobStoreMock.Verify(
+                x => x.MarkSucceededAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            var executorMock = new Mock<IJobExecutor>();
+            executorMock
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("Error!"));
+        }
     }
 }
