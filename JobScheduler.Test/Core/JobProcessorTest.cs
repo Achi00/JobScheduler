@@ -119,6 +119,7 @@ namespace JobScheduler.Test.Core
                 .ReturnsAsync(JobStateChangeResult.Applied);
 
             var executorMock = new Mock<IJobExecutor>();
+
             executorMock
                 .Setup(e => e.ExecuteAsync(It.IsAny<IServiceProvider>(), It.IsAny<string>(), It.IsAny<JobExecutionContext>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
@@ -128,6 +129,7 @@ namespace JobScheduler.Test.Core
                 .Returns(executorMock.Object);
 
             var scopeMock = new Mock<IJobExecutionScope>();
+
             scopeMock.SetupGet(s => s.ServiceProvider).Returns(Mock.Of<IServiceProvider>());
             scopeMock.Setup(s => s.DisposeAsync()).Returns(ValueTask.CompletedTask);
 
@@ -254,12 +256,11 @@ namespace JobScheduler.Test.Core
                 .ReturnsAsync(job);
 
             _jobStoreMock
-                .Setup(x => x.MarkRetryingAsync(
-                    It.IsAny<Guid>(),
-                    It.IsAny<long>(),
-                    It.IsAny<JobError>(),
-                    It.IsAny<DateTimeOffset>(),
-                    It.IsAny<CancellationToken>()))
+                .Setup(x => x.MarkFailedAsync(
+                        It.IsAny<Guid>(),
+                        It.IsAny<long>(),
+                        It.IsAny<JobError>(),
+                        It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JobStateChangeResult.Applied);
 
             var executorMock = new Mock<IJobExecutor>();
@@ -276,16 +277,14 @@ namespace JobScheduler.Test.Core
                 .Setup(x => x.GetExecutor("SendEmail"))
                 .Returns(executorMock.Object);
 
-            var scopeMock = new Mock<IJobExecutionScope>();
-
-            scopeMock
-                .SetupGet(x => x.ServiceProvider)
-                .Returns(Mock.Of<IServiceProvider>());
-
-            _executionScopeFactoryMock
-                .Setup(x => x.CreateScope())
-                .Returns(scopeMock.Object);
-
+            _jobStoreMock
+                .Setup(x => x.MarkRetryingAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<DateTimeOffset>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(JobStateChangeResult.Applied);
             // act
             var processor = CreateProcessor();
 
@@ -294,6 +293,29 @@ namespace JobScheduler.Test.Core
                 CancellationToken.None);
 
             // assert
+            _jobStoreMock.Verify(
+                x => x.MarkRetryingAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<DateTimeOffset>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            _jobStoreMock.Verify(
+                x => x.MarkFailedAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            _jobStoreMock.Verify(
+                x => x.MarkSucceededAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
         }
     }
 }
