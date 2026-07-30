@@ -98,7 +98,7 @@ namespace JobScheduler.Test.Core
                 JobType = "SendEmail",
                 PayloadJson = "{}",
                 Status = JobStatus.Enqueued,
-                AttemptCount = 0,
+                AttemptCount = 1,
                 MaxAttempts = 3,
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
@@ -158,7 +158,7 @@ namespace JobScheduler.Test.Core
                 JobType = "SendEmail",
                 PayloadJson = "{}",
                 Status = JobStatus.Enqueued,
-                AttemptCount = 0,
+                AttemptCount = 1,
                 MaxAttempts = 3,
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
@@ -331,12 +331,13 @@ namespace JobScheduler.Test.Core
                 JobType = "SendEmail",
                 PayloadJson = "{}",
                 Status = JobStatus.Enqueued,
-                AttemptCount = 3,
+                AttemptCount = 1,
                 MaxAttempts = 3,
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
 
+            // returns job
             _jobStoreMock
                 .Setup(x => x.TryClaimNextRunnableJobAsync(
                     It.IsAny<string>(),
@@ -344,6 +345,7 @@ namespace JobScheduler.Test.Core
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(job);
 
+            // tries to update, in this case token mismatch
             _jobStoreMock
                 .Setup(x => x.MarkSucceededAsync(
                         It.IsAny<Guid>(),
@@ -360,6 +362,36 @@ namespace JobScheduler.Test.Core
                     It.IsAny<JobExecutionContext>(),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
+
+            var scopeMock = new Mock<IJobExecutionScope>();
+
+            scopeMock
+                .SetupGet(x => x.ServiceProvider)
+                .Returns(Mock.Of<IServiceProvider>());
+
+            _executionScopeFactoryMock
+                .Setup(x => x.CreateScope())
+                .Returns(scopeMock.Object);
+
+            _jobRegistryMock
+                .Setup(r => r.GetExecutor("SendEmail"))
+                .Returns(executorMock.Object);
+
+            var processor = CreateProcessor();
+
+            var result = await processor.TryProcessOneAsync(
+                "worker-1",
+                CancellationToken.None);
+
+            _jobStoreMock.Verify(
+                x => x.MarkSucceededAsync(
+                    job.Id,
+                    job.LockToken,
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            Assert.Equal(JobProcessResult.LostOwnership, result);
+
         }
     }
 }
