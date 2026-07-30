@@ -391,7 +391,21 @@ namespace JobScheduler.Test.Core
                 Times.Once);
 
             Assert.Equal(JobProcessResult.LostOwnership, result);
+        }
 
+        public async Task TryProcessOneAsync_WhenMarkRetryingReturnsLockTokenMismatch_ShouldReportLostOwnership()
+        {
+            var job = new JobRecord
+            {
+                Id = Guid.NewGuid(),
+                JobType = "SendEmail",
+                PayloadJson = "{}",
+                Status = JobStatus.Enqueued,
+                AttemptCount = 1,
+                MaxAttempts = 3,
+                CreatedAt = DateTimeOffset.UtcNow,
+                AvailableAt = DateTimeOffset.UtcNow
+            };
         }
     }
 }
