@@ -121,7 +121,11 @@ namespace JobScheduler.Test.Core
             var executorMock = new Mock<IJobExecutor>();
 
             executorMock
-                .Setup(e => e.ExecuteAsync(It.IsAny<IServiceProvider>(), It.IsAny<string>(), It.IsAny<JobExecutionContext>(), It.IsAny<CancellationToken>()))
+                .Setup(e => e.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(), 
+                    It.IsAny<string>(), 
+                    It.IsAny<JobExecutionContext>(), 
+                    It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
             _jobRegistryMock
@@ -316,6 +320,46 @@ namespace JobScheduler.Test.Core
                     It.IsAny<long>(),
                     It.IsAny<CancellationToken>()),
                 Times.Never);
+        }
+
+        [Fact]
+        public async Task TryProcessOneAsync_WhenMarkSucceededReturnsLockTokenMismatch_ShouldReportLostOwnership()
+        {
+            var job = new JobRecord
+            {
+                Id = Guid.NewGuid(),
+                JobType = "SendEmail",
+                PayloadJson = "{}",
+                Status = JobStatus.Enqueued,
+                AttemptCount = 3,
+                MaxAttempts = 3,
+                CreatedAt = DateTimeOffset.UtcNow,
+                AvailableAt = DateTimeOffset.UtcNow
+            };
+
+            _jobStoreMock
+                .Setup(x => x.TryClaimNextRunnableJobAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(job);
+
+            _jobStoreMock
+                .Setup(x => x.MarkSucceededAsync(
+                        It.IsAny<Guid>(),
+                        It.IsAny<long>(),
+                        It.IsAny<CancellationToken>()))
+                .ReturnsAsync(JobStateChangeResult.LockTokenMismatch);
+
+            var executorMock = new Mock<IJobExecutor>();
+
+            executorMock
+                .Setup(e => e.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
         }
     }
 }
