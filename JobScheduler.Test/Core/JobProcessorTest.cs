@@ -569,5 +569,68 @@ namespace JobScheduler.Test.Core
 
             Assert.Equal(JobProcessResult.LostOwnership, result);
         }
+
+        [Fact]
+        public async Task TryProcessOneAsync_WhenMarkSucceededReturnsNotFound_ShouldReportStateChangeFailed()
+        {
+            var job = new JobRecord
+            {
+                Id = Guid.NewGuid(),
+                JobType = "SendEmail",
+                PayloadJson = "{}",
+                Status = JobStatus.Enqueued,
+                AttemptCount = 1,
+                MaxAttempts = 3,
+                CreatedAt = DateTimeOffset.UtcNow,
+                AvailableAt = DateTimeOffset.UtcNow
+            };
+
+            // returns job
+            _jobStoreMock
+                .Setup(x => x.TryClaimNextRunnableJobAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(job);
+
+            _jobStoreMock
+                .Setup(x => x.MarkSucceededAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(JobStateChangeResult.NotFound);
+
+            var executorMock = new Mock<IJobExecutor>();
+
+            executorMock
+                .Setup(e => e.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var scopeMock = new Mock<IJobExecutionScope>();
+
+            scopeMock
+                .SetupGet(x => x.ServiceProvider)
+                .Returns(Mock.Of<IServiceProvider>());
+
+            _executionScopeFactoryMock
+                .Setup(x => x.CreateScope())
+                .Returns(scopeMock.Object);
+
+            _jobRegistryMock
+                .Setup(r => r.GetExecutor("SendEmail"))
+                .Returns(executorMock.Object);
+
+            var processor = CreateProcessor();
+
+            var result = await processor.TryProcessOneAsync(
+                "worker-1",
+                CancellationToken.None);
+
+            Assert.Equal(JobProcessResult.StateChangeFailed, result);
+        }
     }
 }
