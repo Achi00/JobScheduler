@@ -393,6 +393,7 @@ namespace JobScheduler.Test.Core
             Assert.Equal(JobProcessResult.LostOwnership, result);
         }
 
+        [Fact]
         public async Task TryProcessOneAsync_WhenMarkRetryingReturnsLockTokenMismatch_ShouldReportLostOwnership()
         {
             var job = new JobRecord
@@ -406,6 +407,69 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
+
+            // returns job
+            _jobStoreMock
+                .Setup(x => x.TryClaimNextRunnableJobAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(job);
+
+            _jobStoreMock
+                .Setup(x => x.MarkRetryingAsync(
+                        It.IsAny<Guid>(),
+                        It.IsAny<long>(),
+                        It.IsAny<JobError>(),
+                        It.IsAny<DateTimeOffset>(),
+                        It.IsAny<CancellationToken>()))
+                .ReturnsAsync(JobStateChangeResult.LockTokenMismatch);
+
+            var executorMock = new Mock<IJobExecutor>();
+
+            executorMock
+                .Setup(e => e.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var scopeMock = new Mock<IJobExecutionScope>();
+
+            scopeMock
+                .SetupGet(x => x.ServiceProvider)
+                .Returns(Mock.Of<IServiceProvider>());
+
+            _executionScopeFactoryMock
+                .Setup(x => x.CreateScope())
+                .Returns(scopeMock.Object);
+
+            _jobRegistryMock
+                .Setup(r => r.GetExecutor("SendEmail"))
+                .Returns(executorMock.Object);
+
+            var processor = CreateProcessor();
+
+            var result = await processor.TryProcessOneAsync(
+                "worker-1",
+                CancellationToken.None);
+
+            _jobStoreMock.Verify(
+                x => x.MarkRetryingAsync(
+                        It.IsAny<Guid>(),
+                        It.IsAny<long>(),
+                        It.IsAny<JobError>(),
+                        It.IsAny<DateTimeOffset>(),
+                        It.IsAny<CancellationToken>()),
+                Times.AtLeastOnce);
+
+            _jobStoreMock.Verify(
+                x => x.MarkSucceededAsync(
+                    job.Id,
+                    job.LockToken,
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
         }
     }
 }
