@@ -470,6 +470,8 @@ namespace JobScheduler.Test.Core
                     job.LockToken,
                     It.IsAny<CancellationToken>()),
                 Times.Never);
+
+            Assert.Equal(JobProcessResult.LostOwnership, result);
         }
 
         [Fact]
