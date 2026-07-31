@@ -433,7 +433,7 @@ namespace JobScheduler.Test.Core
                     It.IsAny<string>(),
                     It.IsAny<JobExecutionContext>(),
                     It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
+                .ThrowsAsync(new InvalidOperationException("Error!"));
 
             var scopeMock = new Mock<IJobExecutionScope>();
 
