@@ -465,6 +465,14 @@ namespace JobScheduler.Test.Core
                 Times.Once);
 
             _jobStoreMock.Verify(
+                x => x.MarkFailedAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            _jobStoreMock.Verify(
                 x => x.MarkSucceededAsync(
                     job.Id,
                     job.LockToken,
@@ -483,7 +491,7 @@ namespace JobScheduler.Test.Core
                 JobType = "SendEmail",
                 PayloadJson = "{}",
                 Status = JobStatus.Enqueued,
-                AttemptCount = 1,
+                AttemptCount = 4,
                 MaxAttempts = 3,
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
@@ -491,11 +499,11 @@ namespace JobScheduler.Test.Core
 
             // returns job
             _jobStoreMock
-               .Setup(x => x.TryClaimNextRunnableJobAsync(
-                   It.IsAny<string>(),
-                   It.IsAny<TimeSpan>(),
-                   It.IsAny<CancellationToken>()))
-               .ReturnsAsync(job);
+                .Setup(x => x.TryClaimNextRunnableJobAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(job);
 
             _jobStoreMock
                 .Setup(x => x.MarkFailedAsync(
@@ -542,7 +550,15 @@ namespace JobScheduler.Test.Core
                         It.IsAny<JobError>(),
                         It.IsAny<DateTimeOffset>(),
                         It.IsAny<CancellationToken>()),
-                Times.AtLeastOnce);
+                Times.Never);
+
+            _jobStoreMock.Verify(
+                x => x.MarkFailedAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
 
             _jobStoreMock.Verify(
                 x => x.MarkSucceededAsync(
@@ -550,6 +566,8 @@ namespace JobScheduler.Test.Core
                     job.LockToken,
                     It.IsAny<CancellationToken>()),
                 Times.Never);
+
+            Assert.Equal(JobProcessResult.LostOwnership, result);
         }
     }
 }
