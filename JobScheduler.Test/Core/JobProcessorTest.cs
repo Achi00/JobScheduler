@@ -630,6 +630,13 @@ namespace JobScheduler.Test.Core
                 "worker-1",
                 CancellationToken.None);
 
+            _jobStoreMock.Verify(
+                x => x.MarkSucceededAsync(
+                    job.Id,
+                    job.LockToken,
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
         }
     }
