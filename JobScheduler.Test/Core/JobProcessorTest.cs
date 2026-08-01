@@ -513,29 +513,7 @@ namespace JobScheduler.Test.Core
                         It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JobStateChangeResult.LockTokenMismatch);
 
-            var executorMock = new Mock<IJobExecutor>();
-
-            executorMock
-                .Setup(e => e.ExecuteAsync(
-                    It.IsAny<IServiceProvider>(),
-                    It.IsAny<string>(),
-                    It.IsAny<JobExecutionContext>(),
-                    It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("Error!"));
-
-            var scopeMock = new Mock<IJobExecutionScope>();
-
-            scopeMock
-                .SetupGet(x => x.ServiceProvider)
-                .Returns(Mock.Of<IServiceProvider>());
-
-            _executionScopeFactoryMock
-                .Setup(x => x.CreateScope())
-                .Returns(scopeMock.Object);
-
-            _jobRegistryMock
-                .Setup(r => r.GetExecutor("SendEmail"))
-                .Returns(executorMock.Object);
+            var executor = SetupThrowingExecutor(new Exception("error"));
 
             var processor = CreateProcessor();
 
@@ -599,30 +577,8 @@ namespace JobScheduler.Test.Core
                     It.IsAny<long>(),
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JobStateChangeResult.NotFound);
-
-            var executorMock = new Mock<IJobExecutor>();
-
-            executorMock
-                .Setup(e => e.ExecuteAsync(
-                    It.IsAny<IServiceProvider>(),
-                    It.IsAny<string>(),
-                    It.IsAny<JobExecutionContext>(),
-                    It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-
-            var scopeMock = new Mock<IJobExecutionScope>();
-
-            scopeMock
-                .SetupGet(x => x.ServiceProvider)
-                .Returns(Mock.Of<IServiceProvider>());
-
-            _executionScopeFactoryMock
-                .Setup(x => x.CreateScope())
-                .Returns(scopeMock.Object);
-
-            _jobRegistryMock
-                .Setup(r => r.GetExecutor("SendEmail"))
-                .Returns(executorMock.Object);
+            
+            var executor = SetupSuccessfulExecutor();
 
             var processor = CreateProcessor();
 
@@ -655,6 +611,65 @@ namespace JobScheduler.Test.Core
                 Times.Never);
 
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
+        }
+
+        // helper
+        // success
+        private Mock<IJobExecutor> SetupSuccessfulExecutor()
+        {
+            var executor = new Mock<IJobExecutor>();
+
+            executor
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            var scope = new Mock<IJobExecutionScope>();
+
+            scope.SetupGet(x => x.ServiceProvider)
+                 .Returns(Mock.Of<IServiceProvider>());
+
+            _executionScopeFactoryMock
+                .Setup(x => x.CreateScope())
+                .Returns(scope.Object);
+
+            _jobRegistryMock
+                .Setup(x => x.GetExecutor("SendEmail"))
+                .Returns(executor.Object);
+
+            return executor;
+        }
+
+        // fail/retry
+        private Mock<IJobExecutor> SetupThrowingExecutor(Exception exception)
+        {
+            var executor = new Mock<IJobExecutor>();
+
+            executor
+                .Setup(x => x.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("Error!"));
+
+            var scope = new Mock<IJobExecutionScope>();
+
+            scope.SetupGet(x => x.ServiceProvider)
+                 .Returns(Mock.Of<IServiceProvider>());
+
+            _executionScopeFactoryMock
+                .Setup(x => x.CreateScope())
+                .Returns(scope.Object);
+
+            _jobRegistryMock
+                .Setup(x => x.GetExecutor("SendEmail"))
+                .Returns(executor.Object);
+
+            return executor;
         }
     }
 }
