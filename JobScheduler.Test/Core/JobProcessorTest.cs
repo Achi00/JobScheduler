@@ -556,7 +556,7 @@ namespace JobScheduler.Test.Core
                     It.IsAny<string>(),
                     It.IsAny<JobExecutionContext>(),
                     It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("Error!"));
+                .ThrowsAsync(exception);
 
             var scope = new Mock<IJobExecutionScope>();
 
