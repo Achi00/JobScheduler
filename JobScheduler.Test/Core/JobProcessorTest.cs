@@ -226,10 +226,6 @@ namespace JobScheduler.Test.Core
 
             var executor = SetupThrowingExecutor(new Exception("error"));
 
-            _jobRegistryMock
-                .Setup(x => x.GetExecutor("SendEmail"))
-                .Returns(executor.Object);
-
             _jobStoreMock
                 .Setup(x => x.MarkRetryingAsync(
                     It.IsAny<Guid>(),
@@ -303,29 +299,7 @@ namespace JobScheduler.Test.Core
                         It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JobStateChangeResult.LockTokenMismatch);
 
-            var executorMock = new Mock<IJobExecutor>();
-
-            executorMock
-                .Setup(e => e.ExecuteAsync(
-                    It.IsAny<IServiceProvider>(),
-                    It.IsAny<string>(),
-                    It.IsAny<JobExecutionContext>(),
-                    It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-
-            var scopeMock = new Mock<IJobExecutionScope>();
-
-            scopeMock
-                .SetupGet(x => x.ServiceProvider)
-                .Returns(Mock.Of<IServiceProvider>());
-
-            _executionScopeFactoryMock
-                .Setup(x => x.CreateScope())
-                .Returns(scopeMock.Object);
-
-            _jobRegistryMock
-                .Setup(r => r.GetExecutor("SendEmail"))
-                .Returns(executorMock.Object);
+            SetupSuccessfulExecutor();
 
             var processor = CreateProcessor();
 
