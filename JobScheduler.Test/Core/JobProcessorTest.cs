@@ -546,8 +546,10 @@ namespace JobScheduler.Test.Core
         }
 
         // fail/retry
-        private Mock<IJobExecutor> SetupThrowingExecutor(Exception exception)
+        private Mock<IJobExecutor> SetupThrowingExecutor(Exception? exception = null)
         {
+            exception ??= new InvalidOperationException("Simulated failure");
+
             var executor = new Mock<IJobExecutor>();
 
             executor
