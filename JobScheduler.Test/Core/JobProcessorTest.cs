@@ -642,6 +642,48 @@ namespace JobScheduler.Test.Core
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
         }
 
+        [Fact]
+        public async Task TryProcessOneAsync_WhenMarkFailedReturnsNotFound_ShouldReportStateChangeFailed()
+        {
+            var job = new JobRecord
+            {
+                Id = Guid.NewGuid(),
+                JobType = "SendEmail",
+                PayloadJson = "{}",
+                Status = JobStatus.Enqueued,
+                AttemptCount = 3,
+                MaxAttempts = 3,
+                CreatedAt = DateTimeOffset.UtcNow,
+                AvailableAt = DateTimeOffset.UtcNow
+            };
+
+            // returns job
+            _jobStoreMock
+                .Setup(x => x.TryClaimNextRunnableJobAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<TimeSpan>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(job);
+
+            _jobStoreMock
+                .Setup(x => x.MarkFailedAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(JobStateChangeResult.NotFound);
+
+            var executor = SetupThrowingExecutor(new Exception("mark failed could not found job"));
+
+            var processor = CreateProcessor();
+
+            var result = await processor.TryProcessOneAsync(
+                "worker-1",
+                CancellationToken.None);
+
+            Assert.Equal(JobProcessResult.StateChangeFailed, result);
+        }
+
         // helper
         // success
         private Mock<IJobExecutor> SetupSuccessfulExecutor()
