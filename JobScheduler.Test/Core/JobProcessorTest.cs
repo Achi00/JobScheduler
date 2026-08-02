@@ -554,6 +554,30 @@ namespace JobScheduler.Test.Core
                 CancellationToken.None);
 
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
+
+            _jobStoreMock.Verify(
+                x => x.MarkSucceededAsync(
+                    job.Id,
+                    job.LockToken,
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            _jobStoreMock.Verify(
+                x => x.MarkRetryingAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<DateTimeOffset>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            _jobStoreMock.Verify(
+                x => x.MarkFailedAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<long>(),
+                    It.IsAny<JobError>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         [Fact]
