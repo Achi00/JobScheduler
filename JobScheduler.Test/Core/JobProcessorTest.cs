@@ -622,8 +622,8 @@ namespace JobScheduler.Test.Core
 
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
 
-            _jobStoreMock.Verify(
-                x => x.MarkSucceededAsync(
+            _jobStoreMock.Verify(x =>
+                x.MarkSucceededAsync(
                     job.Id,
                     job.LockToken,
                     It.IsAny<CancellationToken>()),
