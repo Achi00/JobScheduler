@@ -50,6 +50,17 @@ namespace JobScheduler.Test.Core
         public async Task TryProcessOneAsync_WhenNoJobIsAvailable_ShouldReturnWithoutProcessing()
         {
             // arrange
+            var job = new JobRecord
+            {
+                Id = Guid.NewGuid(),
+                JobType = "SendEmail",
+                PayloadJson = "{}",
+                Status = JobStatus.Enqueued,
+                AttemptCount = 1,
+                MaxAttempts = 3,
+                CreatedAt = DateTimeOffset.UtcNow,
+                AvailableAt = DateTimeOffset.UtcNow
+            };
             _jobStoreMock.Setup(x => x.TryClaimNextRunnableJobAsync(
                 It.IsAny<string>(),
                 It.IsAny<TimeSpan>(),
@@ -113,8 +124,8 @@ namespace JobScheduler.Test.Core
 
             _jobStoreMock
                 .Setup(s => s.MarkSucceededAsync(
-                    It.IsAny<Guid>(),
-                    It.IsAny<long>(),
+                    job.Id,
+                    job.LockToken,
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JobStateChangeResult.Applied);
 
