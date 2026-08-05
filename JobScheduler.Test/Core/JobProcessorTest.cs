@@ -319,8 +319,8 @@ namespace JobScheduler.Test.Core
             // tries to update, in this case token mismatch
             _jobStoreMock
                 .Setup(x => x.MarkSucceededAsync(
-                        It.IsAny<Guid>(),
-                        It.IsAny<long>(),
+                        job.Id,
+                        job.LockToken,
                         It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JobStateChangeResult.LockTokenMismatch);
 
@@ -508,8 +508,8 @@ namespace JobScheduler.Test.Core
 
             _jobStoreMock
                 .Setup(x => x.MarkSucceededAsync(
-                    It.IsAny<Guid>(),
-                    It.IsAny<long>(),
+                    job.Id,
+                    job.LockToken,
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JobStateChangeResult.NotFound);
             
@@ -581,8 +581,8 @@ namespace JobScheduler.Test.Core
 
             _jobStoreMock
                 .Setup(x => x.MarkSucceededAsync(
-                    It.IsAny<Guid>(),
-                    It.IsAny<long>(),
+                    job.Id,
+                    job.LockToken,
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JobStateChangeResult.InvalidState);
 
