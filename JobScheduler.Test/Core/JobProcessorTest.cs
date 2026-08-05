@@ -177,8 +177,8 @@ namespace JobScheduler.Test.Core
 
             _jobStoreMock
                 .Setup(x => x.MarkRetryingAsync(
-                    It.IsAny<Guid>(),
-                    It.IsAny<long>(),
+                    job.Id,
+                    job.LockToken,
                     It.IsAny<JobError>(),
                     It.IsAny<DateTimeOffset>(),
                     It.IsAny<CancellationToken>()))
@@ -211,9 +211,9 @@ namespace JobScheduler.Test.Core
 
             _jobStoreMock.Verify(
                 x => x.MarkRetryingAsync(
-                    It.IsAny<Guid>(),
-                    It.IsAny<long>(),
-                    It.IsAny<JobError>(),
+                    job.Id,
+                    job.LockToken,
+                    It.Is<JobError>(e => e.Message == "Error!"),
                     It.IsAny<DateTimeOffset>(),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
