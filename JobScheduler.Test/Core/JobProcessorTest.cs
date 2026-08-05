@@ -118,14 +118,28 @@ namespace JobScheduler.Test.Core
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JobStateChangeResult.Applied);
 
-            SetupSuccessfulExecutor();
+            var executor = SetupSuccessfulExecutor();
 
             var processor = CreateProcessor();
 
             var result = await processor.TryProcessOneAsync("worker-1", CancellationToken.None);
 
             Assert.Equal(JobProcessResult.Succeeded, result);
-            _jobStoreMock.Verify(s => s.MarkSucceededAsync(job.Id, job.LockToken, It.IsAny<CancellationToken>()), Times.Once);
+
+            _jobStoreMock.Verify(
+                s => s.MarkSucceededAsync(
+                    job.Id, 
+                    job.LockToken, 
+                    It.IsAny<CancellationToken>()), 
+                Times.Once);
+
+            executor.Verify(
+                x => x.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -299,7 +313,7 @@ namespace JobScheduler.Test.Core
                         It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JobStateChangeResult.LockTokenMismatch);
 
-            SetupSuccessfulExecutor();
+            var executor = SetupSuccessfulExecutor();
 
             var processor = CreateProcessor();
 
@@ -315,6 +329,14 @@ namespace JobScheduler.Test.Core
                 Times.Once);
 
             Assert.Equal(JobProcessResult.LostOwnership, result);
+
+            executor.Verify(
+                x => x.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -513,6 +535,14 @@ namespace JobScheduler.Test.Core
                 Times.Never);
 
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
+
+            executor.Verify(
+                x => x.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -578,6 +608,14 @@ namespace JobScheduler.Test.Core
                     It.IsAny<JobError>(),
                     It.IsAny<CancellationToken>()),
                 Times.Never);
+
+            executor.Verify(
+                x => x.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -645,6 +683,14 @@ namespace JobScheduler.Test.Core
                     It.IsAny<JobError>(),
                     It.IsAny<CancellationToken>()),
                 Times.Never);
+
+            executor.Verify(
+                x => x.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -688,6 +734,14 @@ namespace JobScheduler.Test.Core
                 CancellationToken.None);
 
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
+
+            executor.Verify(
+                x => x.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -772,6 +826,14 @@ namespace JobScheduler.Test.Core
                 CancellationToken.None);
 
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
+
+            executor.Verify(
+                x => x.ExecuteAsync(
+                    It.IsAny<IServiceProvider>(),
+                    It.IsAny<string>(),
+                    It.IsAny<JobExecutionContext>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         // helper
