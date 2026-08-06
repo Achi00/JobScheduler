@@ -48,7 +48,7 @@ namespace JobScheduler.Test.Core
             Assert.NotNull(captured);
             Assert.Equal(JobStatus.Enqueued, captured!.Status);
             Assert.Equal(0, captured.AttemptCount);
-            Assert.Equal("welcome", captured.JobType);
+            Assert.Equal(typeof(SendEmailJob).FullName, captured.JobType);
             Assert.False(string.IsNullOrWhiteSpace(captured.PayloadJson));
             Assert.True(captured.AvailableAt <= DateTimeOffset.UtcNow);
             Assert.NotEqual(Guid.Empty, captured.Id);
