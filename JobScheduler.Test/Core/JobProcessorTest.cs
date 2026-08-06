@@ -213,7 +213,7 @@ namespace JobScheduler.Test.Core
                 x => x.MarkRetryingAsync(
                     job.Id,
                     job.LockToken,
-                    It.Is<JobError>(e => e.Message == "error"),
+                    It.Is<JobError>(e => e.Message == "error" && e.Type == typeof(Exception).FullName),
                     It.IsAny<DateTimeOffset>(),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
