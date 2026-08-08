@@ -56,7 +56,7 @@ namespace JobScheduler.Core
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = runAt <= now ? JobStatus.Enqueued : JobStatus.Scheduled,
                 CreatedAt = now,
-                AvailableAt = runAt <= now ? null : runAt.ToUniversalTime(),
+                AvailableAt = runAt <= now ? now : runAt.ToUniversalTime(),
                 AttemptCount = 0,
                 MaxAttempts = _options.DefaultMaxAttempts
             };
