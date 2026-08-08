@@ -53,5 +53,34 @@ namespace JobScheduler.Test.Core
             Assert.True(captured.AvailableAt <= DateTimeOffset.UtcNow);
             Assert.NotEqual(Guid.Empty, captured.Id);
         }
+
+        [Fact]
+        public async Task EnqueueAsync_ShouldCreateJobWithEnqueuedStatusAndZeroAttempts()
+        {
+            JobRecord? captured = null;
+
+            _jobStoreMock
+                .Setup(x => x.CreateAsync(
+                        It.IsAny<JobRecord>(),
+                        It.IsAny<CancellationToken>()))
+                .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
+                .Returns(Task.CompletedTask);
+
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options));
+
+            await client.EnqueueAsync<SendEmailJob>(new SendEmailJob(Guid.NewGuid(), "welcome"));
+
+            Assert.NotNull(captured);
+            Assert.Equal(JobStatus.Enqueued, captured!.Status);
+            Assert.Equal(0, captured.AttemptCount);
+            Assert.Null(captured.CompletedAt);
+            Assert.Null(captured.LockedBy);
+
+            _jobStoreMock.Verify(x =>
+                x.CreateAsync(
+                    It.IsAny<JobRecord>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
     }
 }
