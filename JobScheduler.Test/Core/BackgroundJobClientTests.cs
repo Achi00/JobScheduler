@@ -132,5 +132,29 @@ namespace JobScheduler.Test.Core
             Assert.NotNull(captured);
             Assert.Equal(captured.JobType, typeof(SendEmailJob).FullName);
         }
+
+        [Fact]
+        public async Task EnqueueAsync_ShouldSetAvailableAtToNow()
+        {
+            JobRecord? captured = null;
+
+            _jobStoreMock
+                .Setup(x => x.CreateAsync(
+                        It.IsAny<JobRecord>(),
+                        It.IsAny<CancellationToken>()))
+                .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
+                .Returns(Task.CompletedTask);
+
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options));
+
+            var before = DateTimeOffset.UtcNow;
+
+            await client.EnqueueAsync<SendEmailJob>(new SendEmailJob(Guid.NewGuid(), "welcome"));
+
+            var after = DateTimeOffset.UtcNow;
+
+            Assert.NotNull(captured);
+            Assert.InRange(captured.AvailableAt!.Value, before, after);
+        }
     }
 }
