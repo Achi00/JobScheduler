@@ -12,15 +12,18 @@ namespace JobScheduler.Core
     {
         private readonly IJobStore _jobStore;
         private readonly JobSchedulerOptions _options;
+        private readonly TimeProvider _timeProvider;
 
-        public BackgroundJobClient(IJobStore jobStore, IOptions<JobSchedulerOptions> options)
+        public BackgroundJobClient(IJobStore jobStore, IOptions<JobSchedulerOptions> options, TimeProvider timeProvider)
         {
             _jobStore = jobStore;
             _options = options.Value;
+            _timeProvider = timeProvider;
         }
         public async Task<JobId> EnqueueAsync<TPayload>(TPayload payload, CancellationToken cancellationToken = default)
         {
             var jobId = JobId.New();
+            var now = _timeProvider.GetUtcNow();
 
             var job = new JobRecord
             {
@@ -29,8 +32,8 @@ namespace JobScheduler.Core
                 JobType = typeof(TPayload).FullName!,
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = JobStatus.Enqueued,
-                CreatedAt = DateTimeOffset.UtcNow,
-                AvailableAt = DateTimeOffset.UtcNow,
+                CreatedAt = now,
+                AvailableAt = now,
                 AttemptCount = 0,
                 MaxAttempts = _options.DefaultMaxAttempts
             };
@@ -43,7 +46,7 @@ namespace JobScheduler.Core
         {
             var jobId = JobId.New();
 
-            var now = DateTimeOffset.UtcNow;
+            var now = _timeProvider.GetUtcNow();
 
             var job = new JobRecord
             {
