@@ -42,6 +42,7 @@ namespace JobScheduler.Core.DependencyInjection
             services.AddScoped<IBackgroundJobClient, BackgroundJobClient>();
             services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
             services.AddScoped<JobProcessor>();
+            services.AddSingleton(TimeProvider.System);
 
             return services;
         }

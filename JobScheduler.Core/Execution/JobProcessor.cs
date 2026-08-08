@@ -20,6 +20,7 @@ namespace JobScheduler.Core.Execution
         private readonly IJobRegistry _jobRegistry;
         private readonly IJobExecutionScopeFactory _executionScopeFactory;
         private readonly JobSchedulerOptions _options;
+        private readonly TimeProvider _timeProvider;
         private readonly ILogger<JobProcessor> _logger;
 
         public JobProcessor(
@@ -27,12 +28,14 @@ namespace JobScheduler.Core.Execution
             IJobRegistry jobRegistry,
             IJobExecutionScopeFactory executionScopeFactory,
             IOptions<JobSchedulerOptions> options,
+            TimeProvider timeProvider,
             ILogger<JobProcessor> logger)
         {
             _jobStore = jobStore;
             _jobRegistry = jobRegistry;
             _executionScopeFactory = executionScopeFactory;
             _options = options.Value;
+            _timeProvider = timeProvider;
             _logger = logger;
         }
 
@@ -50,13 +53,15 @@ namespace JobScheduler.Core.Execution
 
             await using var scope = _executionScopeFactory.CreateScope();
 
+            var now = _timeProvider.GetUtcNow();
+
             var context = new JobExecutionContext
             (
                 jobId: JobId.FromGuid(job.Id),
                 jobType: job.JobType,
                 attemptCount: job.AttemptCount,
                 createdAt: job.CreatedAt,
-                startedAt: DateTimeOffset.UtcNow
+                startedAt: now
             );
 
             try
@@ -93,14 +98,14 @@ namespace JobScheduler.Core.Execution
             }
 
             var delay = GetRetryDelay(job.AttemptCount);
-            var availableAt = DateTimeOffset.UtcNow.Add(delay);
+            var availableAt = TimeProvider.System.GetUtcNow().Add(delay);
 
             var retryResult = await _jobStore
                 .MarkRetryingAsync(
                     job.Id,
                     job.LockToken,
                     error,
-                    DateTimeOffset.UtcNow.Add(delay),
+                    TimeProvider.System.GetUtcNow().Add(delay),
                     ct
                 );
 
