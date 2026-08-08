@@ -110,5 +110,27 @@ namespace JobScheduler.Test.Core
 
             Assert.Equal(originalPayload, deserialized);
         }
+
+        [Fact]
+        public async Task EnqueueAsync_ShouldSetJobTypeFromHandlerRegistration()
+        {
+            JobRecord? captured = null;
+
+            _jobStoreMock
+                .Setup(x => x.CreateAsync(
+                        It.IsAny<JobRecord>(),
+                        It.IsAny<CancellationToken>()))
+                .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
+                .Returns(Task.CompletedTask);
+
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options));
+
+            var originalPayload = new SendEmailJob(Guid.NewGuid(), "welcome");
+
+            await client.EnqueueAsync<SendEmailJob>(originalPayload);
+
+            Assert.NotNull(captured);
+            Assert.Equal(captured.JobType, typeof(SendEmailJob).FullName);
+        }
     }
 }
