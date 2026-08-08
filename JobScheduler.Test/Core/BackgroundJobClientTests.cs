@@ -5,6 +5,7 @@ using JobScheduler.Core.Options;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Text.Json;
 
 namespace JobScheduler.Test.Core
 {
@@ -81,6 +82,33 @@ namespace JobScheduler.Test.Core
                     It.IsAny<JobRecord>(),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task EnqueueAsync_ShouldSerializePayload()
+        {
+            JobRecord? captured = null;
+
+            _jobStoreMock
+                .Setup(x => x.CreateAsync(
+                        It.IsAny<JobRecord>(),
+                        It.IsAny<CancellationToken>()))
+                .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
+                .Returns(Task.CompletedTask);
+
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options));
+
+            var originalPayload = new SendEmailJob(Guid.NewGuid(), "welcome");
+
+            await client.EnqueueAsync<SendEmailJob>(originalPayload);
+
+            Assert.NotNull(captured);
+            Assert.False(string.IsNullOrWhiteSpace(captured!.PayloadJson));
+
+            // deserialize back to object
+            var deserialized = JsonSerializer.Deserialize<SendEmailJob>(captured.PayloadJson);
+
+            Assert.Equal(originalPayload, deserialized);
         }
     }
 }
