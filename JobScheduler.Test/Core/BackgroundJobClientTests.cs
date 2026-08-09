@@ -4,6 +4,7 @@ using JobScheduler.Core;
 using JobScheduler.Core.Options;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using System.Text.Json;
 
@@ -13,11 +14,13 @@ namespace JobScheduler.Test.Core
     {
         private readonly Mock<IJobStore> _jobStoreMock;
         private readonly JobSchedulerOptions _options;
-        private readonly Mock<TimeProvider> _timeProviderMock = new();
+        private readonly FakeTimeProvider _timeProvider;
 
         public BackgroundJobClientTests()
         {
             _jobStoreMock = new();
+            _timeProvider = new FakeTimeProvider();
+            _timeProvider.SetUtcNow(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
             _options = new JobSchedulerOptions
             {
                 // defaults
@@ -36,7 +39,7 @@ namespace JobScheduler.Test.Core
                 .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
                 .Returns(Task.CompletedTask);
 
-            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProviderMock.Object);
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
 
             await client.EnqueueAsync<SendEmailJob>(new SendEmailJob(Guid.NewGuid(), "welcome"));
 
@@ -68,7 +71,7 @@ namespace JobScheduler.Test.Core
                 .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
                 .Returns(Task.CompletedTask);
 
-            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProviderMock.Object);
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
 
             await client.EnqueueAsync<SendEmailJob>(new SendEmailJob(Guid.NewGuid(), "welcome"));
 
@@ -97,7 +100,7 @@ namespace JobScheduler.Test.Core
                 .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
                 .Returns(Task.CompletedTask);
 
-            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProviderMock.Object);
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
 
             var originalPayload = new SendEmailJob(Guid.NewGuid(), "welcome");
 
@@ -124,7 +127,7 @@ namespace JobScheduler.Test.Core
                 .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
                 .Returns(Task.CompletedTask);
 
-            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProviderMock.Object);
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
 
             var originalPayload = new SendEmailJob(Guid.NewGuid(), "welcome");
 
@@ -146,7 +149,7 @@ namespace JobScheduler.Test.Core
                 .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
                 .Returns(Task.CompletedTask);
 
-            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProviderMock.Object);
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
 
             var before = DateTimeOffset.UtcNow;
 
@@ -155,7 +158,7 @@ namespace JobScheduler.Test.Core
             var after = DateTimeOffset.UtcNow;
 
             Assert.NotNull(captured);
-            Assert.InRange(captured.AvailableAt!.Value, before, after);
+            Assert.Equal(_timeProvider.GetUtcNow(), captured!.AvailableAt);
         }
 
         //[Fact]
