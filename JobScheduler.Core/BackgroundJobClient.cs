@@ -2,6 +2,7 @@
 using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Options;
+using JobScheduler.Core.Resolvers;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
@@ -28,8 +29,7 @@ namespace JobScheduler.Core
             var job = new JobRecord
             {
                 Id = jobId.Value,
-                // TODO: later will be using JobNameAttribute
-                JobType = typeof(TPayload).FullName!,
+                JobType = JobTypeNameResolver.Resolve<TPayload>(),
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = JobStatus.Enqueued,
                 CreatedAt = now,
@@ -51,8 +51,7 @@ namespace JobScheduler.Core
             var job = new JobRecord
             {
                 Id = jobId.Value,
-                // TODO: later will be using JobNameAttribute
-                JobType = typeof(TPayload).FullName!,
+                JobType = JobTypeNameResolver.Resolve<TPayload>(),
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = runAt <= now ? JobStatus.Enqueued : JobStatus.Scheduled,
                 CreatedAt = now,
