@@ -38,11 +38,14 @@ namespace JobScheduler.Test.Core
 
         private JobProcessor CreateProcessor()
         {
+            var timeProviderMock = new Mock<TimeProvider>();
+
             return new JobProcessor(
                 _jobStoreMock.Object,
                 _jobRegistryMock.Object,
                 _executionScopeFactoryMock.Object,
                 Options.Create(_options),
+                timeProviderMock.Object,
                 _loggerMock.Object);
         }
 
