@@ -162,28 +162,6 @@ namespace JobScheduler.Test.Core
             Assert.Equal(_timeProvider.GetUtcNow(), captured!.AvailableAt);
         }
 
-        //[Fact]
-        //public async Task EnqueueAsync_ShouldUseJobNameAttributeWhenPresent()
-        //{
-        //    JobRecord? captured = null;
-
-        //    _jobStoreMock
-        //        .Setup(x => x.CreateAsync(
-        //                It.IsAny<JobRecord>(),
-        //                It.IsAny<CancellationToken>()))
-        //        .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
-        //        .Returns(Task.CompletedTask);
-
-        //    var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
-
-        //    var originalPayload = new SendEmailJob(Guid.NewGuid(), "welcome");
-
-        //    await client.EnqueueAsync<SendEmailJob>(originalPayload);
-
-        //    Assert.NotNull(captured);
-        //    Assert.Equal(captured.JobType, JobTypeNameResolver.Resolve<SendEmailJob>());
-        //}
-
         // payload type with no jobname attribute, defined for test
         public sealed record UnannotatedJob(Guid Id);
 
@@ -205,6 +183,30 @@ namespace JobScheduler.Test.Core
 
             Assert.NotNull(captured);
             Assert.Equal(typeof(UnannotatedJob).FullName, captured.JobType);
+        }
+
+        // scheduling
+
+        [Fact]
+        public async Task ScheduleAsync_ShouldCreateScheduledJob()
+        {
+            JobRecord? captured = null;
+
+            _jobStoreMock
+                .Setup(x => x.CreateAsync(
+                        It.IsAny<JobRecord>(),
+                        It.IsAny<CancellationToken>()))
+                .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
+                .Returns(Task.CompletedTask);
+
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
+
+            var runAt = _timeProvider.GetUtcNow().AddHours(1);
+
+            await client.ScheduleAsync<SendEmailJob>(new SendEmailJob(Guid.NewGuid(), "welcome"),runAt);
+
+            Assert.NotNull(captured);
+            Assert.Equal(JobStatus.Scheduled, captured.Status);
         }
     }
 }
