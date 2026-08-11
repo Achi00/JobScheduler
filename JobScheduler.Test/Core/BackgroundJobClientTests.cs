@@ -201,12 +201,36 @@ namespace JobScheduler.Test.Core
 
             var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
 
+            // runs in future
             var runAt = _timeProvider.GetUtcNow().AddHours(1);
 
             await client.ScheduleAsync<SendEmailJob>(new SendEmailJob(Guid.NewGuid(), "welcome"),runAt);
 
             Assert.NotNull(captured);
             Assert.Equal(JobStatus.Scheduled, captured.Status);
+        }
+
+        [Fact]
+        public async Task ScheduleAsync_WhenRunAtIsNowOrPast_ShouldCreateEnqueuedJob()
+        {
+            JobRecord? captured = null;
+
+            _jobStoreMock
+                .Setup(x => x.CreateAsync(
+                        It.IsAny<JobRecord>(),
+                        It.IsAny<CancellationToken>()))
+                .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
+                .Returns(Task.CompletedTask);
+
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
+
+            // runs now
+            var runAt = _timeProvider.GetUtcNow();
+
+            await client.ScheduleAsync<SendEmailJob>(new SendEmailJob(Guid.NewGuid(), "welcome"),runAt);
+
+            Assert.NotNull(captured);
+            Assert.Equal(JobStatus.Enqueued, captured.Status);
         }
     }
 }
