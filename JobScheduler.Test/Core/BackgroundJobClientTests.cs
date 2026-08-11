@@ -176,22 +176,35 @@ namespace JobScheduler.Test.Core
 
         //    var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
 
-        //    var before = DateTimeOffset.UtcNow;
+        //    var originalPayload = new SendEmailJob(Guid.NewGuid(), "welcome");
 
-        //    await client.EnqueueAsync<SendEmailJob>(new SendEmailJob(Guid.NewGuid(), "welcome"));
-
-        //    var after = DateTimeOffset.UtcNow;
+        //    await client.EnqueueAsync<SendEmailJob>(originalPayload);
 
         //    Assert.NotNull(captured);
-        //    Assert.Equal(_timeProvider.GetUtcNow(), captured!.AvailableAt);
+        //    Assert.Equal(captured.JobType, JobTypeNameResolver.Resolve<SendEmailJob>());
         //}
 
-        //[Fact]
-        //public async Task EnqueueAsync_ShouldFallBackToFullNameWhenAttributeMissing()
-        //{
-        //    // some payload type with no [JobName]
-        //    //await client.EnqueueAsync<UnannotatedJob>(new UnannotatedJob(...));
-        //    //Assert.Equal(typeof(UnannotatedJob).FullName, captured!.JobType);
-        //}
+        // payload type with no jobname attribute, defined for test
+        public sealed record UnannotatedJob(Guid Id);
+
+        [Fact]
+        public async Task EnqueueAsync_ShouldFallBackToFullNameWhenAttributeMissing()
+        {
+            JobRecord? captured = null;
+
+            _jobStoreMock
+                .Setup(x => x.CreateAsync(
+                        It.IsAny<JobRecord>(),
+                        It.IsAny<CancellationToken>()))
+                .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
+                .Returns(Task.CompletedTask);
+
+            var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
+
+            await client.EnqueueAsync<UnannotatedJob>(new UnannotatedJob(Guid.NewGuid()));
+
+            Assert.NotNull(captured);
+            Assert.Equal(typeof(UnannotatedJob).FullName, captured.JobType);
+        }
     }
 }
