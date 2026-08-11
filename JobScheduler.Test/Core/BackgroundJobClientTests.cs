@@ -2,6 +2,7 @@
 using JobScheduler.Client.Email.Success;
 using JobScheduler.Core;
 using JobScheduler.Core.Options;
+using JobScheduler.Core.Resolvers;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -53,7 +54,7 @@ namespace JobScheduler.Test.Core
             Assert.NotNull(captured);
             Assert.Equal(JobStatus.Enqueued, captured!.Status);
             Assert.Equal(0, captured.AttemptCount);
-            Assert.Equal(typeof(SendEmailJob).FullName, captured.JobType);
+            Assert.Equal(JobTypeNameResolver.Resolve<SendEmailJob>(), captured.JobType);
             Assert.False(string.IsNullOrWhiteSpace(captured.PayloadJson));
             Assert.True(captured.AvailableAt <= DateTimeOffset.UtcNow);
             Assert.NotEqual(Guid.Empty, captured.Id);
@@ -134,7 +135,7 @@ namespace JobScheduler.Test.Core
             await client.EnqueueAsync<SendEmailJob>(originalPayload);
 
             Assert.NotNull(captured);
-            Assert.Equal(captured.JobType, typeof(SendEmailJob).FullName);
+            Assert.Equal(captured.JobType, JobTypeNameResolver.Resolve<SendEmailJob>());
         }
 
         [Fact]
@@ -164,9 +165,25 @@ namespace JobScheduler.Test.Core
         //[Fact]
         //public async Task EnqueueAsync_ShouldUseJobNameAttributeWhenPresent()
         //{
-        //    // SendEmailJob is [JobName("SendEmail")] set in attributes
-        //    //await client.EnqueueAsync<SendEmailJob>(new SendEmailJob());
-        //    //Assert.Equal("SendEmail", captured!.JobType);
+        //    JobRecord? captured = null;
+
+        //    _jobStoreMock
+        //        .Setup(x => x.CreateAsync(
+        //                It.IsAny<JobRecord>(),
+        //                It.IsAny<CancellationToken>()))
+        //        .Callback<JobRecord, CancellationToken>((job, _) => captured = job)
+        //        .Returns(Task.CompletedTask);
+
+        //    var client = new BackgroundJobClient(_jobStoreMock.Object, Options.Create(_options), _timeProvider);
+
+        //    var before = DateTimeOffset.UtcNow;
+
+        //    await client.EnqueueAsync<SendEmailJob>(new SendEmailJob(Guid.NewGuid(), "welcome"));
+
+        //    var after = DateTimeOffset.UtcNow;
+
+        //    Assert.NotNull(captured);
+        //    Assert.Equal(_timeProvider.GetUtcNow(), captured!.AvailableAt);
         //}
 
         //[Fact]
