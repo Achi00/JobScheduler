@@ -9,11 +9,17 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="8.10.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\JobScheduler.Abstractions\JobScheduler.Abstractions.csproj" />
     <ProjectReference Include="..\JobScheduler.Storage.Abstractions\JobScheduler.Storage.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+	  <InternalsVisibleTo Include="JobScheduler.Test" />
+	  <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
 
 </Project>

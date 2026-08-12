@@ -2,6 +2,7 @@
 using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Options;
+using JobScheduler.Core.Resolvers;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
@@ -12,25 +13,27 @@ namespace JobScheduler.Core
     {
         private readonly IJobStore _jobStore;
         private readonly JobSchedulerOptions _options;
+        private readonly TimeProvider _timeProvider;
 
-        public BackgroundJobClient(IJobStore jobStore, IOptions<JobSchedulerOptions> options)
+        public BackgroundJobClient(IJobStore jobStore, IOptions<JobSchedulerOptions> options, TimeProvider timeProvider)
         {
             _jobStore = jobStore;
             _options = options.Value;
+            _timeProvider = timeProvider;
         }
         public async Task<JobId> EnqueueAsync<TPayload>(TPayload payload, CancellationToken cancellationToken = default)
         {
             var jobId = JobId.New();
+            var now = _timeProvider.GetUtcNow();
 
             var job = new JobRecord
             {
                 Id = jobId.Value,
-                // TODO: later will be using JobNameAttribute
-                JobType = typeof(TPayload).FullName!,
+                JobType = JobTypeNameResolver.Resolve<TPayload>(),
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = JobStatus.Enqueued,
-                CreatedAt = DateTimeOffset.UtcNow,
-                AvailableAt = DateTimeOffset.UtcNow,
+                CreatedAt = now,
+                AvailableAt = now,
                 AttemptCount = 0,
                 MaxAttempts = _options.DefaultMaxAttempts
             };
@@ -43,17 +46,16 @@ namespace JobScheduler.Core
         {
             var jobId = JobId.New();
 
-            var now = DateTimeOffset.UtcNow;
+            var now = _timeProvider.GetUtcNow();
 
             var job = new JobRecord
             {
                 Id = jobId.Value,
-                // TODO: later will be using JobNameAttribute
-                JobType = typeof(TPayload).FullName!,
+                JobType = JobTypeNameResolver.Resolve<TPayload>(),
                 PayloadJson = JsonSerializer.Serialize(payload),
                 Status = runAt <= now ? JobStatus.Enqueued : JobStatus.Scheduled,
                 CreatedAt = now,
-                AvailableAt = runAt <= now ? null : runAt.ToUniversalTime(),
+                AvailableAt = runAt <= now ? now : runAt.ToUniversalTime(),
                 AttemptCount = 0,
                 MaxAttempts = _options.DefaultMaxAttempts
             };

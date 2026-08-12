@@ -1,5 +1,6 @@
 ﻿using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Core.Execution;
+using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.HostedServices;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
@@ -41,6 +42,7 @@ namespace JobScheduler.Core.DependencyInjection
             services.AddScoped<IBackgroundJobClient, BackgroundJobClient>();
             services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
             services.AddScoped<JobProcessor>();
+            services.AddSingleton(TimeProvider.System);
 
             return services;
         }

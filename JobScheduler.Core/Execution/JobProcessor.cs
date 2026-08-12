@@ -1,6 +1,7 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
 using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Enums;
+using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
 using JobScheduler.Storage.Abstractions.Jobs;
@@ -13,25 +14,28 @@ namespace JobScheduler.Core.Execution
     // job orcestrator, controls job lifecycle
     // TODO: claim job -> mark processing -> create JobExecutionContext -> find executor -> mark succeed/failed
     // FAILED: catch ex -> increment attempt -> if attempt < maxAttempts = mark retrying/scheduled, else mark failed
-    internal sealed class JobProcessor
+    internal sealed class JobProcessor : IJobProcessor
     {
         private readonly IJobStore _jobStore;
-        private readonly JobRegistry _jobRegistry;
-        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IJobRegistry _jobRegistry;
+        private readonly IJobExecutionScopeFactory _executionScopeFactory;
         private readonly JobSchedulerOptions _options;
+        private readonly TimeProvider _timeProvider;
         private readonly ILogger<JobProcessor> _logger;
 
         public JobProcessor(
-            IJobStore jobStore, 
-            JobRegistry jobRegistry, 
-            IServiceScopeFactory scopeFactory,
+            IJobStore jobStore,
+            IJobRegistry jobRegistry,
+            IJobExecutionScopeFactory executionScopeFactory,
             IOptions<JobSchedulerOptions> options,
+            TimeProvider timeProvider,
             ILogger<JobProcessor> logger)
         {
             _jobStore = jobStore;
             _jobRegistry = jobRegistry;
-            _scopeFactory = scopeFactory;
+            _executionScopeFactory = executionScopeFactory;
             _options = options.Value;
+            _timeProvider = timeProvider;
             _logger = logger;
         }
 
@@ -45,7 +49,11 @@ namespace JobScheduler.Core.Execution
                 return JobProcessResult.NoJobAvailable;
             }
 
-            await using var scope = _scopeFactory.CreateAsyncScope();
+            var executor = _jobRegistry.GetExecutor(job.JobType);
+
+            await using var scope = _executionScopeFactory.CreateScope();
+
+            var now = _timeProvider.GetUtcNow();
 
             var context = new JobExecutionContext
             (
@@ -53,17 +61,15 @@ namespace JobScheduler.Core.Execution
                 jobType: job.JobType,
                 attemptCount: job.AttemptCount,
                 createdAt: job.CreatedAt,
-                startedAt: DateTimeOffset.UtcNow
+                startedAt: now
             );
 
             try
             {
-                var executor = _jobRegistry.GetExecutor(job.JobType);
-                
                 _logger.LogInformation(
                     "Starting job {JobId} of type {JobType}, attempt {Attempt}",
-                    job.Id, 
-                    job.JobType, 
+                    job.Id,
+                    job.JobType,
                     job.AttemptCount
                 );
 
@@ -87,19 +93,19 @@ namespace JobScheduler.Core.Execution
             if (job.AttemptCount >= job.MaxAttempts)
             {
                 var result = await _jobStore.MarkFailedAsync(job.Id, job.LockToken, error, ct);
-                
+
                 return HandleFailedTransitionResult(job, result);
             }
 
             var delay = GetRetryDelay(job.AttemptCount);
-            var availableAt = DateTimeOffset.UtcNow.Add(delay);
+            var availableAt = TimeProvider.System.GetUtcNow().Add(delay);
 
             var retryResult = await _jobStore
                 .MarkRetryingAsync(
-                    job.Id, 
-                    job.LockToken, 
-                    error, 
-                    DateTimeOffset.UtcNow.Add(delay), 
+                    job.Id,
+                    job.LockToken,
+                    error,
+                    TimeProvider.System.GetUtcNow().Add(delay),
                     ct
                 );
 
@@ -107,7 +113,7 @@ namespace JobScheduler.Core.Execution
         }
 
         private JobProcessResult HandleSucceededTransitionResult(
-            JobScheduler.Storage.Abstractions.Jobs.JobRecord job,
+            JobRecord job,
             JobStateChangeResult result)
         {
             switch (result)
@@ -232,15 +238,15 @@ namespace JobScheduler.Core.Execution
         {
             return attemptCount switch
             {
-                // testing
-                1 => TimeSpan.FromSeconds(5),
-                2 => TimeSpan.FromSeconds(5),
-                3 => TimeSpan.FromSeconds(5),
-                _ => TimeSpan.FromSeconds(5) 
-                //1 => TimeSpan.FromSeconds(10),
-                //2 => TimeSpan.FromMinutes(1),
-                //3 => TimeSpan.FromMinutes(5),
-                //_ => TimeSpan.FromMinutes(15)
+                //// testing
+                //1 => TimeSpan.FromSeconds(5),
+                //2 => TimeSpan.FromSeconds(5),
+                //3 => TimeSpan.FromSeconds(5),
+                //_ => TimeSpan.FromSeconds(5)
+                1 => TimeSpan.FromSeconds(10),
+                2 => TimeSpan.FromMinutes(1),
+                3 => TimeSpan.FromMinutes(5),
+                _ => TimeSpan.FromMinutes(15)
             };
         }
     }
