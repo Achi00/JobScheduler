@@ -9,6 +9,8 @@ using Microsoft.Extensions.Options;
 namespace JobScheduler.Core.HostedServices
 {
     // finds or claims runnable job, executes it, marks it as succeeded/failed/retrying ect..
+    // handles multiple Worker loops, worker: 0 -> scope -> DbContext -> Processor ...
+    // TryClaimNextRunnableJobAsync makes this safer because of db locking, READPAST/UPDLOCK...
     internal sealed class JobProcessingWorker : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
@@ -43,6 +45,7 @@ namespace JobScheduler.Core.HostedServices
             await Task.WhenAll(workers);
         }
 
+        // single running loop, id incremented as enumerable goes, each loop gets different id, will be used for LockedBy
         private async Task ProcessLoopAsync(
             int workerNumber,
             CancellationToken stoppingToken)
@@ -54,30 +57,34 @@ namespace JobScheduler.Core.HostedServices
                 "Job worker {WorkerId} started.",
                 workerId);
 
+            // adding small randomized delay to avoid thundering herd / synchronized polling problem, causes large load/spikes for syncronized jobs
+            var baseDelay = _options.CurrentValue.PollingInterval;
+
+            var jitter = Random.Shared.Next(
+                0,
+                (int)baseDelay.TotalMilliseconds / 5);
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    await using var scope =
-                        _scopeFactory.CreateAsyncScope();
+                    await using var scope = _scopeFactory.CreateAsyncScope();
 
-                    var processor =
-                        scope.ServiceProvider.GetRequiredService<JobProcessor>();
+                    var processor = scope.ServiceProvider.GetRequiredService<JobProcessor>();
 
-                    var result =
-                        await processor.TryProcessOneAsync(
+                    var result = await processor.TryProcessOneAsync(
                             workerId,
                             stoppingToken);
 
                     if (result == JobProcessResult.NoJobAvailable)
                     {
                         await Task.Delay(
-                            _options.CurrentValue.PollingInterval,
+                            baseDelay + TimeSpan.FromMilliseconds(jitter),,
                             stoppingToken);
                     }
                 }
-                catch (OperationCanceledException)
-                    when (stoppingToken.IsCancellationRequested)
+                // just cancel
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
                     break;
                 }
@@ -89,7 +96,7 @@ namespace JobScheduler.Core.HostedServices
                         workerId);
 
                     await Task.Delay(
-                        _options.CurrentValue.PollingInterval,
+                        baseDelay + TimeSpan.FromMilliseconds(jitter),
                         stoppingToken);
                 }
             }
