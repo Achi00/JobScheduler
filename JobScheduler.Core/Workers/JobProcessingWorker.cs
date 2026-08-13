@@ -31,15 +31,47 @@ namespace JobScheduler.Core.HostedServices
         {
             _logger.LogInformation("Job worker {WorkerId} started.", _workerId);
 
+            var workerCount = _options.CurrentValue.WorkerCount;
+
+            _logger.LogInformation(
+                "Starting {WorkerCount} job processing workers.",
+                workerCount);
+
+            var workers = Enumerable.Range(0, workerCount)
+                .Select(workerNumber =>
+                    ProcessLoopAsync(workerNumber, stoppingToken))
+                .ToArray();
+
+            await Task.WhenAll(workers);
+
+            _logger.LogInformation("Job worker {WorkerId} stopped", _workerId);
+        }
+
+        private async Task ProcessLoopAsync(
+            int workerNumber,
+            CancellationToken stoppingToken)
+        {
+            var workerId =
+                $"{Environment.MachineName}-worker-{workerNumber}-{Guid.NewGuid():N}";
+
+            _logger.LogInformation(
+                "Job worker {WorkerId} started.",
+                workerId);
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    await using var scope = _scopeFactory.CreateAsyncScope();
+                    await using var scope =
+                        _scopeFactory.CreateAsyncScope();
 
-                    var processor = scope.ServiceProvider.GetRequiredService<JobProcessor>();
+                    var processor =
+                        scope.ServiceProvider.GetRequiredService<JobProcessor>();
 
-                    var result = await processor.TryProcessOneAsync(_workerId, stoppingToken);
+                    var result =
+                        await processor.TryProcessOneAsync(
+                            workerId,
+                            stoppingToken);
 
                     if (result == JobProcessResult.NoJobAvailable)
                     {
@@ -48,18 +80,27 @@ namespace JobScheduler.Core.HostedServices
                             stoppingToken);
                     }
                 }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                catch (OperationCanceledException)
+                    when (stoppingToken.IsCancellationRequested)
                 {
+                    break;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Job worker {WorkedId} failed", _workerId);
+                    _logger.LogError(
+                        ex,
+                        "Job worker {WorkerId} failed.",
+                        workerId);
 
-                    await Task.Delay(_options.CurrentValue.PollingInterval, stoppingToken);
+                    await Task.Delay(
+                        _options.CurrentValue.PollingInterval,
+                        stoppingToken);
                 }
             }
 
-            _logger.LogInformation("Job worker {WorkerId} stopped", _workerId);
+            _logger.LogInformation(
+                "Job worker {WorkerId} stopped.",
+                workerId);
         }
     }
 }
