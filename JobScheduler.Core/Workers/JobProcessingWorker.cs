@@ -57,13 +57,6 @@ namespace JobScheduler.Core.HostedServices
                 "Job worker {WorkerId} started.",
                 workerId);
 
-            // adding small randomized delay to avoid thundering herd / synchronized polling problem, causes large load/spikes for syncronized jobs
-            var baseDelay = _options.CurrentValue.PollingInterval;
-
-            var jitter = Random.Shared.Next(
-                0,
-                (int)baseDelay.TotalMilliseconds / 5);
-
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
@@ -78,8 +71,20 @@ namespace JobScheduler.Core.HostedServices
 
                     if (result == JobProcessResult.NoJobAvailable)
                     {
+                        // adding small randomized delay to avoid thundering herd / synchronized polling problem, causes large load/spikes for syncronized jobs
+
+                        var baseDelay = _options.CurrentValue.PollingInterval;
+
+                        var maxJitterMilliseconds =
+                            Math.Max(
+                                1,
+                                (int)baseDelay.TotalMilliseconds / 5);
+
+                        var jitterMilliseconds = Random.Shared.Next(0, maxJitterMilliseconds + 1);
+
                         await Task.Delay(
-                            baseDelay + TimeSpan.FromMilliseconds(jitter),,
+                            baseDelay +
+                            TimeSpan.FromMilliseconds(jitterMilliseconds),
                             stoppingToken);
                     }
                 }
@@ -95,9 +100,13 @@ namespace JobScheduler.Core.HostedServices
                         "Job worker {WorkerId} failed.",
                         workerId);
 
-                    await Task.Delay(
-                        baseDelay + TimeSpan.FromMilliseconds(jitter),
-                        stoppingToken);
+                    var baseDelay = _options.CurrentValue.PollingInterval;
+
+                    var maxJitterMilliseconds =Math.Max(1, (int)baseDelay.TotalMilliseconds / 5);
+
+                    var jitterMilliseconds = Random.Shared.Next(0, maxJitterMilliseconds + 1);
+
+                    await Task.Delay(baseDelay + TimeSpan.FromMilliseconds(jitterMilliseconds), stoppingToken);
                 }
             }
 
