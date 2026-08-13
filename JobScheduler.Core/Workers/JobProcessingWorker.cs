@@ -46,9 +46,7 @@ namespace JobScheduler.Core.HostedServices
         }
 
         // single running loop, id incremented as enumerable goes, each loop gets different id, will be used for LockedBy
-        private async Task ProcessLoopAsync(
-            int workerNumber,
-            CancellationToken stoppingToken)
+        private async Task ProcessLoopAsync(int workerNumber,CancellationToken stoppingToken)
         {
             var workerId =
                 $"{Environment.MachineName}-worker-{workerNumber}-{Guid.NewGuid():N}";
@@ -72,20 +70,7 @@ namespace JobScheduler.Core.HostedServices
                     if (result == JobProcessResult.NoJobAvailable)
                     {
                         // adding small randomized delay to avoid thundering herd / synchronized polling problem, causes large load/spikes for syncronized jobs
-
-                        var baseDelay = _options.CurrentValue.PollingInterval;
-
-                        var maxJitterMilliseconds =
-                            Math.Max(
-                                1,
-                                (int)baseDelay.TotalMilliseconds / 5);
-
-                        var jitterMilliseconds = Random.Shared.Next(0, maxJitterMilliseconds + 1);
-
-                        await Task.Delay(
-                            baseDelay +
-                            TimeSpan.FromMilliseconds(jitterMilliseconds),
-                            stoppingToken);
+                        await DelayWithJitterAsync(stoppingToken);
                     }
                 }
                 // just cancel
@@ -100,19 +85,29 @@ namespace JobScheduler.Core.HostedServices
                         "Job worker {WorkerId} failed.",
                         workerId);
 
-                    var baseDelay = _options.CurrentValue.PollingInterval;
-
-                    var maxJitterMilliseconds =Math.Max(1, (int)baseDelay.TotalMilliseconds / 5);
-
-                    var jitterMilliseconds = Random.Shared.Next(0, maxJitterMilliseconds + 1);
-
-                    await Task.Delay(baseDelay + TimeSpan.FromMilliseconds(jitterMilliseconds), stoppingToken);
+                    await DelayWithJitterAsync(stoppingToken);
                 }
             }
 
             _logger.LogInformation(
                 "Job worker {WorkerId} stopped.",
                 workerId);
+        }
+
+        private Task DelayWithJitterAsync(CancellationToken cancellationToken)
+        {
+            var baseDelay = _options.CurrentValue.PollingInterval;
+
+            var maxJitterMilliseconds = Math.Max(
+                1,
+                (int)baseDelay.TotalMilliseconds / 5);
+
+            var jitterMilliseconds =
+                Random.Shared.Next(0, maxJitterMilliseconds + 1);
+
+            return Task.Delay(
+                baseDelay + TimeSpan.FromMilliseconds(jitterMilliseconds),
+                cancellationToken);
         }
     }
 }
