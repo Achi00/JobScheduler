@@ -29,8 +29,6 @@ namespace JobScheduler.Core.HostedServices
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("Job worker {WorkerId} started.", _workerId);
-
             var workerCount = _options.CurrentValue.WorkerCount;
 
             _logger.LogInformation(
@@ -43,8 +41,6 @@ namespace JobScheduler.Core.HostedServices
                 .ToArray();
 
             await Task.WhenAll(workers);
-
-            _logger.LogInformation("Job worker {WorkerId} stopped", _workerId);
         }
 
         private async Task ProcessLoopAsync(
