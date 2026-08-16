@@ -1,6 +1,7 @@
 ﻿using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Core.Execution;
 using JobScheduler.Core.Execution.Interfaces;
+using JobScheduler.Core.Execution.Scope;
 using JobScheduler.Core.HostedServices;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry;
@@ -37,12 +38,15 @@ namespace JobScheduler.Core.DependencyInjection
                 "WorkerCount must be greater than zero.")
             .ValidateOnStart();
 
-            services.AddSingleton<JobRegistry>();
+            //services.AddSingleton<JobRegistry>();
+            services.AddSingleton<IJobRegistry, JobRegistry>();
 
             services.AddScoped<IBackgroundJobClient, BackgroundJobClient>();
             services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
             services.AddScoped<JobProcessor>();
             services.AddSingleton(TimeProvider.System);
+
+            services.AddScoped<IJobExecutionScopeFactory, ServiceProviderJobExecutionScopeFactory>();
 
             return services;
         }
