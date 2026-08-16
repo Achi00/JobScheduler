@@ -17,7 +17,6 @@ namespace JobScheduler.Core.HostedServices
         // using IOptionsMonitor for live config update, this service is always singleton, otherwise IOptions
         private readonly IOptionsMonitor<JobSchedulerOptions> _options;
         private readonly ILogger<JobProcessingWorker> _logger;
-        private readonly string _workerId = $"{Environment.MachineName}-{Guid.NewGuid():N}";
 
         public JobProcessingWorker(
             IServiceScopeFactory scopeFactory,
