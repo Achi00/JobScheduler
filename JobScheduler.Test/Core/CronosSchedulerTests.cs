@@ -36,5 +36,19 @@ namespace JobScheduler.Test.Core
 
             Assert.Equal(new DateTimeOffset(2026, 1, 1, 5, 0, 0, TimeSpan.Zero), next);
         }
+
+        [Fact]
+        public void GetNextOccurrence_AcrossDstTransition_HandlesCorrectly()
+        {
+            // DST zones Europe/London, America/New_York
+            // "from" timestamp right around a known DST boundary date, ~1-2 minute
+            var from = new DateTimeOffset(2026, 3, 29, 0, 59, 0, TimeSpan.Zero);
+
+            var next = _scheduler.GetNextOccurrence("* * * * *", "Europe/London", from);
+
+            var expectedUtc = new DateTimeOffset(2026, 3, 29, 1, 0, 0, TimeSpan.Zero);
+
+            Assert.Equal(expectedUtc, next);
+        }
     }
 }
