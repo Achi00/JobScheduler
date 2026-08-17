@@ -13,5 +13,28 @@ namespace JobScheduler.Test.Core
             var next = _scheduler.GetNextOccurrence("0 * * * *", "UTC", from);
             Assert.Equal(new DateTimeOffset(2026, 1, 1, 11, 0, 0, TimeSpan.Zero), next);
         }
+
+        [Fact]
+        public void GetNextOccurrence_WithInvalidCronExpression_ThrowsArgumentException()
+        {
+            Assert.Throws<ArgumentException>(() => _scheduler.GetNextOccurrence("Invalid Cronos", "00", DateTimeOffset.UtcNow));
+        }
+
+        [Fact]
+        public void GetNextOccurrence_WithInvalidTimeZone_ThrowsArgumentException()
+        {
+            Assert.Throws<ArgumentException>(() => _scheduler.GetNextOccurrence("0 * * * *", "N/A", DateTimeOffset.UtcNow));
+        }
+
+        // passing valid cron expression and zone id
+        [Fact]
+        public void GetNextOccurrence_WithNonUtcTimeZone_ConvertsCorrectly()
+        {
+            // "0 9 * * *" = 9am daily, in Asia/Tbilisi (UTC+4, no DST) = 5am UTC
+            var from = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+            var next = _scheduler.GetNextOccurrence("0 9 * * *", "Asia/Tbilisi", from);
+
+            Assert.Equal(new DateTimeOffset(2026, 1, 1, 5, 0, 0, TimeSpan.Zero), next);
+        }
     }
 }
