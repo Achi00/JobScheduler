@@ -55,6 +55,7 @@ namespace JobScheduler.Core.DependencyInjection
         {
             services.AddHostedService<JobProcessingWorker>();
             services.AddHostedService<LeaseRecoveryWorker>();
+            services.AddHostedService<RecurringJobSchedulerWorker>();
 
             return services;
         }
