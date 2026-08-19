@@ -37,7 +37,7 @@ namespace JobScheduler.Core.Execution
             _logger = logger;
         }
 
-        public async Task DispatchDueJobsAsync(CancellationToken ct)
+        public async Task<int> DispatchDueJobsAsync(CancellationToken ct)
         {
             var now = _timeProvider.GetUtcNow();
 
@@ -68,6 +68,7 @@ namespace JobScheduler.Core.Execution
 
                 await transaction.CommitAsync(ct);
 
+                return due.Count;
             }
             catch (Exception ex)
             {
