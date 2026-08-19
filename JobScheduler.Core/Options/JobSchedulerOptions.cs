@@ -13,5 +13,8 @@
         public int DefaultMaxAttempts { get; set; } = 3;
 
         public int WorkerCount { get; set; } = 1;
+
+        // recurring jobs
+        public TimeSpan RecurringCheckInterval { get; set; } = TimeSpan.FromMinutes(1);
     }
 }

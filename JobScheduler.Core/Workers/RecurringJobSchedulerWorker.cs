@@ -31,14 +31,27 @@ namespace JobScheduler.Core.Workers
                     await using var scope = _scopeFactory.CreateAsyncScope();
                     var processor = scope.ServiceProvider.GetRequiredService<RecurringJobProcessor>();
 
-                    var dispached = await processor.DispatchDueJobsAsync(stoppingToken);
-                }
-                catch (Exception)
-                {
+                    var dispatched = await processor.DispatchDueJobsAsync(stoppingToken);
 
-                    throw;
+                    if (dispatched > 0)
+                    {
+                        _logger.LogInformation("Dispatched {Count} recurring job instance(s).", dispatched);
+                    }
                 }
+                // stopping toket passed
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Recurring job scheduler failed.");
+                }
+
+                await Task.Delay(_options.CurrentValue.RecurringCheckInterval, stoppingToken);
             }
+
+            _logger.LogInformation("Recurring job scheduler stopped.");
         }
     }
 }
