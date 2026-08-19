@@ -59,6 +59,7 @@ namespace JobScheduler.Core.Execution
                         Status = JobStatus.Enqueued,
                         CreatedAt = now,
                         AvailableAt = now,
+                        AttemptCount = 0,
                         MaxAttempts = _options.CurrentValue.DefaultMaxAttempts
                     }, ct);
 
