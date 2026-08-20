@@ -1,10 +1,17 @@
-﻿using JobScheduler.Storage.Abstractions.RecurringJobs;
+﻿using JobScheduler.EntityFrameworkCore.Persistence.Context;
+using JobScheduler.Storage.Abstractions.RecurringJobs;
 
 namespace JobScheduler.EntityFrameworkCore.Storage
 {
+    // follows same idea as IJobStore, server locking
     public sealed class EntityFrameworkRecurringJobStore : IRecurringJobStore
     {
-        // follows same idea as IJobStore, server locking
+        private readonly JobSchedulerDbContext _context;
+
+        public EntityFrameworkRecurringJobStore(JobSchedulerDbContext context)
+        {
+            _context = context;
+        }
         public Task AddOrUpdateAsync(RecurringJobRecord job, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();

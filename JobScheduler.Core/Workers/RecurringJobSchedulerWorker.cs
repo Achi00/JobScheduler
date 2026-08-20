@@ -7,6 +7,9 @@ using Microsoft.Extensions.Options;
 
 namespace JobScheduler.Core.Workers
 {
+    /*
+     * uses single running loop, no parallelism 
+     */
     internal sealed class RecurringJobSchedulerWorker : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
