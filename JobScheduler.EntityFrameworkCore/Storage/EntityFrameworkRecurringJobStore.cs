@@ -1,6 +1,10 @@
 ﻿using JobScheduler.EntityFrameworkCore.Interfaces;
+using JobScheduler.EntityFrameworkCore.Mappers;
 using JobScheduler.EntityFrameworkCore.Persistence.Context;
 using JobScheduler.Storage.Abstractions.RecurringJobs;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using System.Data;
 
 namespace JobScheduler.EntityFrameworkCore.Storage
 {
@@ -10,28 +14,80 @@ namespace JobScheduler.EntityFrameworkCore.Storage
         private readonly JobSchedulerDbContext _context;
         private readonly IRecurringJobStoreCommandFactory _providerFactory;
 
-        public EntityFrameworkRecurringJobStore(JobSchedulerDbContext context)
+        public EntityFrameworkRecurringJobStore(JobSchedulerDbContext context, IRecurringJobStoreCommandFactory providerFactory)
         {
             _context = context;
+            _providerFactory = providerFactory;
         }
-        public Task AddOrUpdateAsync(RecurringJobRecord job, CancellationToken cancellationToken)
+        public async Task AddOrUpdateAsync(RecurringJobRecord job, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            var existing = await _context.RecurringJob.FirstOrDefaultAsync(x => x.Id == job.Id, cancellationToken);
+
+            if (existing is null)
+            {
+                _context.RecurringJob.Add(RecurringJobEntityMapper.ToEntity(job));
+            }
+            else
+            {
+                RecurringJobEntityMapper.ApplyTo(existing, job);
+            }
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public Task<IReadOnlyList<RecurringJobRecord>> GetDueForUpdateAsync(DateTimeOffset now, int batchSize, CancellationToken cancellationToken)
+        public async Task<IReadOnlyList<RecurringJobRecord>> GetDueForUpdateAsync(DateTimeOffset now, int batchSize, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
+            // raw sql connection
+            var connection = _context.Database.GetDbConnection();
+            var shouldClose = connection.State != ConnectionState.Open;
+            if (shouldClose)
+            {
+                await connection.OpenAsync(cancellationToken);
+            }
+
+            try
+            {
+                await using var command = _providerFactory.CreateGetDueForUpdateCommand(connection, now, batchSize);
+
+                var currentTransaction = _context.Database.CurrentTransaction;
+
+                if (currentTransaction != null)
+                {
+                    command.Transaction = currentTransaction.GetDbTransaction();
+                }
+
+                var results = new List<RecurringJobRecord>();
+                await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    // TODO: need RecurringJobEntityDataReader, mirrors JobEntityDataReader
+                }
+
+                return results;
+            }
+            finally
+            {
+                if (shouldClose)
+                {
+                    await connection.CloseAsync();
+                }
+            }
         }
 
-        public Task RemoveAsync(Guid id, CancellationToken cancellationToken)
+        public async Task RemoveAsync(Guid id, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            await _context.RecurringJob.Where(x => x.Id == id).ExecuteDeleteAsync(cancellationToken);
         }
 
-        public Task UpdateNextRunAsync(Guid id, DateTimeOffset nextRunAt, DateTimeOffset lastRunAt, CancellationToken cancellationToken)
+        public async Task UpdateNextRunAsync(Guid id, DateTimeOffset nextRunAt, DateTimeOffset lastRunAt, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            await _context.RecurringJob
+                .Where(x => x.Id == id)
+                .ExecuteUpdateAsync(
+                    setter => setter
+                        .SetProperty(x => x.NextRunAt, nextRunAt)
+                        .SetProperty(x => x.LastRunAt, lastRunAt)
+                , cancellationToken);
         }
     }
 }
