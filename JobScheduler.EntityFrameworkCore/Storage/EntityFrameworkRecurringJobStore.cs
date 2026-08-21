@@ -1,4 +1,5 @@
-﻿using JobScheduler.EntityFrameworkCore.Persistence.Context;
+﻿using JobScheduler.EntityFrameworkCore.Interfaces;
+using JobScheduler.EntityFrameworkCore.Persistence.Context;
 using JobScheduler.Storage.Abstractions.RecurringJobs;
 
 namespace JobScheduler.EntityFrameworkCore.Storage
@@ -7,6 +8,7 @@ namespace JobScheduler.EntityFrameworkCore.Storage
     public sealed class EntityFrameworkRecurringJobStore : IRecurringJobStore
     {
         private readonly JobSchedulerDbContext _context;
+        private readonly IRecurringJobStoreCommandFactory _providerFactory;
 
         public EntityFrameworkRecurringJobStore(JobSchedulerDbContext context)
         {
