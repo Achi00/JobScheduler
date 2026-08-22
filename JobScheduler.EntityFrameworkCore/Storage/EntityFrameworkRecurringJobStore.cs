@@ -1,6 +1,7 @@
 ﻿using JobScheduler.EntityFrameworkCore.Interfaces;
 using JobScheduler.EntityFrameworkCore.Mappers;
 using JobScheduler.EntityFrameworkCore.Persistence.Context;
+using JobScheduler.EntityFrameworkCore.Readers;
 using JobScheduler.Storage.Abstractions.RecurringJobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -36,7 +37,6 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
         public async Task<IReadOnlyList<RecurringJobRecord>> GetDueForUpdateAsync(DateTimeOffset now, int batchSize, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
             // raw sql connection
             var connection = _context.Database.GetDbConnection();
             var shouldClose = connection.State != ConnectionState.Open;
@@ -60,7 +60,8 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                 await using var reader = await command.ExecuteReaderAsync(cancellationToken);
                 while (await reader.ReadAsync(cancellationToken))
                 {
-                    // TODO: need RecurringJobEntityDataReader, mirrors JobEntityDataReader
+                    var entity = RecurringJobEntityDataReader.Read(reader);
+                    results.Add(RecurringJobEntityMapper.ToRecord(entity));
                 }
 
                 return results;
