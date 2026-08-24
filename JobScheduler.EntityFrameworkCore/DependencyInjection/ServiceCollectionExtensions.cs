@@ -18,7 +18,7 @@ namespace JobScheduler.EntityFrameworkCore.DependencyInjection
 
             services.AddScoped<IJobStore, EntityFrameworkJobStore>();
             services.AddScoped<IRecurringJobStore, EntityFrameworkRecurringJobStore>();
-            services.AddScoped<IUnitOfWork, EntityFrameworkRecurringJobStore>();
+            services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
             return services;
         }
