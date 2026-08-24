@@ -25,5 +25,4 @@ namespace JobScheduler.Storage.SqlServer.Provider
             return command;
         }
     }
-    }
 }
