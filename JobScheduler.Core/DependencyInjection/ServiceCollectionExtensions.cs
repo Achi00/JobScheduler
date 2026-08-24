@@ -4,6 +4,7 @@ using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Execution.Scope;
 using JobScheduler.Core.HostedServices;
 using JobScheduler.Core.Options;
+using JobScheduler.Core.Recurring;
 using JobScheduler.Core.Registry;
 using JobScheduler.Core.Storage;
 using JobScheduler.Core.Workers;
@@ -45,7 +46,11 @@ namespace JobScheduler.Core.DependencyInjection
             services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
             services.AddScoped<JobProcessor>();
             services.AddScoped<RecurringJobProcessor>();
+
+            //time
             services.AddSingleton(TimeProvider.System);
+            // cron
+            services.AddSingleton<ICronScheduler, CronosScheduler>();
 
             services.AddScoped<IJobExecutionScopeFactory, ServiceProviderJobExecutionScopeFactory>();
 
