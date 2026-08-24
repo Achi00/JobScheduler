@@ -9,16 +9,16 @@ using System.Text.Json;
 
 namespace JobScheduler.Core.Clients
 {
-    internal class BackgroundJobClient : IBackgroundJobClient
+    internal sealed class BackgroundJobClient : IBackgroundJobClient
     {
         private readonly IJobStore _jobStore;
-        private readonly JobSchedulerOptions _options;
+        private readonly IOptionsMonitor<JobSchedulerOptions> _options;
         private readonly TimeProvider _timeProvider;
 
-        public BackgroundJobClient(IJobStore jobStore, IOptions<JobSchedulerOptions> options, TimeProvider timeProvider)
+        public BackgroundJobClient(IJobStore jobStore, IOptionsMonitor<JobSchedulerOptions> options, TimeProvider timeProvider)
         {
             _jobStore = jobStore;
-            _options = options.Value;
+            _options = options;
             _timeProvider = timeProvider;
         }
         public async Task<JobId> EnqueueAsync<TPayload>(TPayload payload, CancellationToken cancellationToken = default)
@@ -35,7 +35,7 @@ namespace JobScheduler.Core.Clients
                 CreatedAt = now,
                 AvailableAt = now,
                 AttemptCount = 0,
-                MaxAttempts = _options.DefaultMaxAttempts
+                MaxAttempts = _options.CurrentValue.DefaultMaxAttempts
             };
             await _jobStore.CreateAsync(job, cancellationToken);
 
@@ -57,7 +57,7 @@ namespace JobScheduler.Core.Clients
                 CreatedAt = now,
                 AvailableAt = runAt <= now ? now : runAt.ToUniversalTime(),
                 AttemptCount = 0,
-                MaxAttempts = _options.DefaultMaxAttempts
+                MaxAttempts = _options.CurrentValue.DefaultMaxAttempts
             };
 
             await _jobStore.CreateAsync(job, cancellationToken);

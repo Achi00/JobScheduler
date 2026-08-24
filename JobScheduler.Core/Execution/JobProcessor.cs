@@ -19,7 +19,7 @@ namespace JobScheduler.Core.Execution
         private readonly IJobStore _jobStore;
         private readonly IJobRegistry _jobRegistry;
         private readonly IJobExecutionScopeFactory _executionScopeFactory;
-        private readonly JobSchedulerOptions _options;
+        private readonly IOptionsMonitor<JobSchedulerOptions> _options;
         private readonly TimeProvider _timeProvider;
         private readonly ILogger<JobProcessor> _logger;
 
@@ -27,14 +27,14 @@ namespace JobScheduler.Core.Execution
             IJobStore jobStore,
             IJobRegistry jobRegistry,
             IJobExecutionScopeFactory executionScopeFactory,
-            IOptions<JobSchedulerOptions> options,
+            IOptionsMonitor<JobSchedulerOptions> options,
             TimeProvider timeProvider,
             ILogger<JobProcessor> logger)
         {
             _jobStore = jobStore;
             _jobRegistry = jobRegistry;
             _executionScopeFactory = executionScopeFactory;
-            _options = options.Value;
+            _options = options;
             _timeProvider = timeProvider;
             _logger = logger;
         }
@@ -42,7 +42,7 @@ namespace JobScheduler.Core.Execution
         public async Task<JobProcessResult> TryProcessOneAsync(string workerId, CancellationToken ct)
         {
             // TryClaimNextRunnableJobAsync mark's job as processing state
-            var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, _options.LockDuration, ct);
+            var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, _options.CurrentValue.LockDuration, ct);
 
             if (job is null)
             {

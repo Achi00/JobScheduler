@@ -3,13 +3,13 @@
     public interface IRecurringJobClient
     {
         Task AddOrUpdateAsync<TPayload>(
-            string recurringJobId,
+            Guid recurringJobId,
             string cronExpression,
             TPayload payload,
             CancellationToken cancellationToken = default);
 
         Task RemoveAsync(
-            string recurringJobId,
+            Guid recurringJobId,
             CancellationToken cancellationToken = default);
     }
 }

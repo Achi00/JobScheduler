@@ -1,6 +1,7 @@
 ﻿using JobScheduler.Abstractions.Jobs.Enums;
 using JobScheduler.Client.Email.Success;
 using JobScheduler.Core;
+using JobScheduler.Core.Clients;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Resolvers;
 using JobScheduler.Storage.Abstractions.Jobs;
