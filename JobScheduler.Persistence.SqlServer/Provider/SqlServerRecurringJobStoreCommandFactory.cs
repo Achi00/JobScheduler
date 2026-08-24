@@ -14,7 +14,7 @@ namespace JobScheduler.Storage.SqlServer.Provider
             var command = connection.CreateCommand();
 
             command.CommandText = $@"
-               SELECT TOP(@batchSize) FROM  RecurringJobs WITH (READPAST, UPDLOCK, ROWLOCK)
+               SELECT TOP (@batchSize) * FROM RecurringJob WITH (READPAST, UPDLOCK, ROWLOCK)
                 WHERE IsEnabled = 1 AND NextRunAt <= @now
                 ORDER BY NextRunAt ASC;
             ";
