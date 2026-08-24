@@ -3,7 +3,7 @@ using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Enums;
 using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Options;
-using JobScheduler.Core.Registry;
+using JobScheduler.Core.Registry.Interfaces;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

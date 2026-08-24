@@ -1,6 +1,6 @@
 ﻿using JobScheduler.Abstractions.Jobs.Enums;
 using JobScheduler.Core.Options;
-using JobScheduler.Core.Recurring;
+using JobScheduler.Core.Recurring.Interfaces;
 using JobScheduler.Storage.Abstractions.Jobs;
 using JobScheduler.Storage.Abstractions.RecurringJobs;
 using JobScheduler.Storage.Abstractions.UnitOfWork;

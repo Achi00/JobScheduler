@@ -7,7 +7,7 @@ using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 
-namespace JobScheduler.Core
+namespace JobScheduler.Core.Clients
 {
     internal class BackgroundJobClient : IBackgroundJobClient
     {

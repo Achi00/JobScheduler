@@ -1,4 +1,5 @@
 ﻿using JobScheduler.Core.Execution.Interfaces;
+using JobScheduler.Core.Registry.Interfaces;
 
 namespace JobScheduler.Core.Registry
 {

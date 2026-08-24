@@ -1,11 +1,14 @@
 ﻿using JobScheduler.Abstractions.Jobs.Interfaces;
+using JobScheduler.Core.Clients;
 using JobScheduler.Core.Execution;
 using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Execution.Scope;
 using JobScheduler.Core.HostedServices;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Recurring;
+using JobScheduler.Core.Recurring.Interfaces;
 using JobScheduler.Core.Registry;
+using JobScheduler.Core.Registry.Interfaces;
 using JobScheduler.Core.Storage;
 using JobScheduler.Core.Workers;
 using Microsoft.Extensions.DependencyInjection;
