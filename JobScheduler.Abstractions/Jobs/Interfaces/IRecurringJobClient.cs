@@ -6,6 +6,7 @@
             Guid recurringJobId,
             string cronExpression,
             TPayload payload,
+            string timeZoneId,
             CancellationToken cancellationToken = default);
 
         Task RemoveAsync(

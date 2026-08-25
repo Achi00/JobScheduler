@@ -45,13 +45,20 @@ namespace JobScheduler.Core.DependencyInjection
             //services.AddSingleton<JobRegistry>();
             services.AddSingleton<IJobRegistry, JobRegistry>();
 
+            // clients
             services.AddScoped<IBackgroundJobClient, BackgroundJobClient>();
+            services.AddScoped<IRecurringJobClient, RecurringJobClient>();
+            
+            // readers
             services.AddScoped<IBackgroundJobReader, BackgroundJobReader>();
+            
+            // processors
             services.AddScoped<JobProcessor>();
             services.AddScoped<RecurringJobProcessor>();
 
             //time
             services.AddSingleton(TimeProvider.System);
+            
             // cron
             services.AddSingleton<ICronScheduler, CronosScheduler>();
 
