@@ -129,5 +129,17 @@ namespace JobScheduler.Test.Core
             Assert.Equal(firstNextRunAt, captured[0].NextRunAt);
             Assert.Equal(secondNextRunAt, captured[1].NextRunAt);
         }
+
+        [Fact]
+        public async Task RemoveAsync_ShouldCallStoreWithCorrectId()
+        {
+            var jobId = Guid.NewGuid();
+
+            var client = CreateClient();
+
+            await client.RemoveAsync(jobId);
+
+            _storeMock.Verify(x => x.RemoveAsync(jobId, It.IsAny<CancellationToken>()), Times.Once);
+        }
     }
 }
