@@ -81,5 +81,21 @@ namespace JobScheduler.Test.Core
             var deserialized = JsonSerializer.Deserialize<SendEmailJob>(captured.PayloadJson);
             Assert.Equal(originalPayload, deserialized);
         }
+
+        [Fact]
+        public async Task AddOrUpdateAsync_WhenCronExpressionIsInvalid_ShouldThrowAndNotPersist()
+        {
+            _cronSchedulerMock
+               .Setup(x => x.GetNextOccurrence(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>()))
+               .Throws(new ArgumentException("Invalid cron expression"));
+
+            var client = CreateClient();
+
+            await Assert.ThrowsAsync<ArgumentException>(() => client.AddOrUpdateAsync(Guid.NewGuid(), "invalid cron", CancellationToken.None));
+
+            _storeMock.Verify(
+                x => x.AddOrUpdateAsync(It.IsAny<RecurringJobRecord>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
     }
 }
