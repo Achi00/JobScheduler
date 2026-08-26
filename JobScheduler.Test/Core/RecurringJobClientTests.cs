@@ -1,6 +1,7 @@
 ﻿using JobScheduler.Client.Email.Success;
 using JobScheduler.Core.Clients;
 using JobScheduler.Core.Recurring.Interfaces;
+using JobScheduler.Core.Resolvers;
 using JobScheduler.Storage.Abstractions.RecurringJobs;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -12,6 +13,13 @@ namespace JobScheduler.Test.Core
         private readonly Mock<IRecurringJobStore> _storeMock;
         private readonly Mock<ICronScheduler> _cronSchedulerMock;
         private readonly FakeTimeProvider _timeProvider;
+
+        public RecurringJobClientTests()
+        {
+            _storeMock = new Mock<IRecurringJobStore>();
+            _cronSchedulerMock = new Mock<ICronScheduler>();
+            _timeProvider = new FakeTimeProvider();
+        }
 
         private RecurringJobClient CreateCleint() => new(_storeMock.Object, _cronSchedulerMock.Object, _timeProvider);
 
