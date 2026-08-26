@@ -97,5 +97,37 @@ namespace JobScheduler.Test.Core
                 x => x.AddOrUpdateAsync(It.IsAny<RecurringJobRecord>(), It.IsAny<CancellationToken>()),
                 Times.Never);
         }
+
+        [Fact]
+        public async Task AddOrUpdateAsync_WhenCalledTwiceWithDifferentCron_ShouldRecomputeNextRunAt()
+        {
+            var jobId = Guid.NewGuid();
+            var firstNextRunAt = new DateTimeOffset(2026, 1, 1, 1, 0, 0, TimeSpan.Zero);
+            var secondNextRunAt = new DateTimeOffset(2026, 1, 1, 2, 0, 0, TimeSpan.Zero);
+
+            _cronSchedulerMock
+                .Setup(x => x.GetNextOccurrence("0 * * * *", "UTC", It.IsAny<DateTimeOffset>()))
+                .Returns(firstNextRunAt);
+            
+            _cronSchedulerMock
+                .Setup(x => x.GetNextOccurrence("0 */2 * * *", "UTC", It.IsAny<DateTimeOffset>()))
+                .Returns(secondNextRunAt);
+
+            var captured = new List<RecurringJobRecord>();
+            _storeMock
+                .Setup(x => x.AddOrUpdateAsync(It.IsAny<RecurringJobRecord>(), It.IsAny<CancellationToken>()))
+                .Callback<RecurringJobRecord, CancellationToken>((record, _) => captured.Add(record))
+                .Returns(Task.CompletedTask);
+
+            var client = CreateClient();
+            var payload = new SendEmailJob(Guid.NewGuid(), "welcome");
+
+            await client.AddOrUpdateAsync(jobId, "0 * * * *", payload);
+            await client.AddOrUpdateAsync(jobId, "0 */2 * * *", payload);
+
+            Assert.Equal(2, captured.Count);
+            Assert.Equal(firstNextRunAt, captured[0].NextRunAt);
+            Assert.Equal(secondNextRunAt, captured[1].NextRunAt);
+        }
     }
 }
