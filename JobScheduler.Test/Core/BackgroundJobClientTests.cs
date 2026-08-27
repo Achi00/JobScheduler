@@ -5,6 +5,8 @@ using JobScheduler.Core.Clients;
 using JobScheduler.Core.DependencyInjection;
 using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Options;
+using JobScheduler.Core.Registry;
+using JobScheduler.Core.Registry.Interfaces;
 using JobScheduler.Core.Resolvers;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.DependencyInjection;
@@ -289,8 +291,9 @@ namespace JobScheduler.Test.Core
         }
 
         // should catch if job type is registered in resolver, unless throws
+        // success
         [Fact]
-        public async Task ScheduleAsync_AddJob_ShouldRegisterExecutorWithJobTypeMatchingResolver()
+        public async Task AddJob_ShouldRegisterExecutorWithJobTypeMatchingResolver()
         {
             var services = new ServiceCollection();
             services.AddJob<SendEmailJob, SendEmailJobHandler>();
@@ -299,6 +302,28 @@ namespace JobScheduler.Test.Core
             var executor = provider.GetRequiredService<IJobExecutor>();
 
             Assert.Equal(JobTypeNameResolver.Resolve<SendEmailJob>(), executor.JobType);
+        }
+
+        // fail
+        [Fact]
+        public async Task AddJob_ShouldThrowExceptionIfNoJobJypeRegistered()
+        {
+            var services = new ServiceCollection();
+            services.AddJob<SendEmailJob, SendEmailJobHandler>();
+            services.AddSingleton<IJobRegistry, JobRegistry>();
+
+            var provider = services.BuildServiceProvider();
+            var registry = provider.GetRequiredService<IJobRegistry>();
+
+            var unregisteredJobType = "NonExistentJobType";
+
+            var exception = Assert.Throws<InvalidOperationException>(() => registry.GetExecutor(unregisteredJobType));
+
+            Assert.Contains(unregisteredJobType, exception.Message);
+            Assert.Contains("No job executor registered for job type", exception.Message);
+
+
+            //throw new InvalidOperationException($"No job executor registered for job type '{jobType}'");
         }
     }
 }
