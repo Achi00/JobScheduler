@@ -1,3 +1,4 @@
+using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Client.Email.Failure;
 using JobScheduler.Client.Email.Success;
 using JobScheduler.Core.DependencyInjection;
@@ -42,5 +43,19 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+
+// TESTING
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobs = scope.ServiceProvider.GetRequiredService<IRecurringJobClient>();
+
+    await recurringJobs.AddOrUpdateAsync(
+        recurringJobId: new Guid("11111111-1111-1111-1111-111111111111"),
+        // runs every minute, NextRunAt should be now + 1 minute
+        cronExpression: "* * * * *",
+        payload: new SendEmailJob(Guid.NewGuid(), "recurring-digest"),
+        timeZoneId: "UTC");
+}
 
 app.Run();
