@@ -9,6 +9,7 @@ using JobScheduler.Core.Recurring;
 using JobScheduler.Core.Recurring.Interfaces;
 using JobScheduler.Core.Registry;
 using JobScheduler.Core.Registry.Interfaces;
+using JobScheduler.Core.Resolvers;
 using JobScheduler.Core.Storage;
 using JobScheduler.Core.Workers;
 using Microsoft.Extensions.DependencyInjection;
@@ -76,10 +77,12 @@ namespace JobScheduler.Core.DependencyInjection
             return services;
         }
 
+        // used to register clients job handler
         public static IServiceCollection AddJob<TPayload, THandler>(this IServiceCollection services) 
             where THandler : class, IJobHandler<TPayload>
         {
-            var jobType = typeof(TPayload).FullName!;
+            //var jobType = typeof(TPayload).FullName!;
+            var jobType = JobTypeNameResolver.Resolve<TPayload>();
 
             services.AddScoped<THandler>();
 
