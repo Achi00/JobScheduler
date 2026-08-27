@@ -2,9 +2,12 @@
 using JobScheduler.Client.Email.Success;
 using JobScheduler.Core;
 using JobScheduler.Core.Clients;
+using JobScheduler.Core.DependencyInjection;
+using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Resolvers;
 using JobScheduler.Storage.Abstractions.Jobs;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -283,6 +286,19 @@ namespace JobScheduler.Test.Core
 
             Assert.NotNull(captured!.AvailableAt);
             Assert.Equal(_timeProvider.GetUtcNow(), captured.AvailableAt);
+        }
+
+        // should catch if job type is registered in resolver, unless throws
+        [Fact]
+        public async Task ScheduleAsync_AddJob_ShouldRegisterExecutorWithJobTypeMatchingResolver()
+        {
+            var services = new ServiceCollection();
+            services.AddJob<SendEmailJob, SendEmailJobHandler>();
+
+            var provider = services.BuildServiceProvider();
+            var executor = provider.GetRequiredService<IJobExecutor>();
+
+            Assert.Equal(JobTypeNameResolver.Resolve<SendEmailJob>(), executor.JobType);
         }
     }
 }
