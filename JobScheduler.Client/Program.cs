@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // TODO: add CleanupWorker, MetricsWorker... hosted services in future
+// TODO: seperate client and server nodes to save resources if no work is to do
 
 // Add services to the container.
 
@@ -15,9 +16,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// register my job scheduler DI
-builder.Services.AddJobSchedulerCore();
-builder.Services.AddJobSchedulerServer();
+// register my job scheduler DI, using builder pattern
+builder.Services
+    .AddJobScheduler()
+    .AddServer();
 
 builder.Services.AddSqlServerJobStorage(builder.Configuration.GetConnectionString("Default")!);
 

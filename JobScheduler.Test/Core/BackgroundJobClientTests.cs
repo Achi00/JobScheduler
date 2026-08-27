@@ -306,7 +306,7 @@ namespace JobScheduler.Test.Core
 
         // fail
         [Fact]
-        public async Task AddJob_ShouldThrowExceptionIfNoJobJypeRegistered()
+        public void AddJob_ShouldThrowExceptionIfNoJobJypeRegistered()
         {
             var services = new ServiceCollection();
             services.AddJob<SendEmailJob, SendEmailJobHandler>();

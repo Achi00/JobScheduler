@@ -1,4 +1,5 @@
 ﻿using JobScheduler.Abstractions.Jobs.Interfaces;
+using JobScheduler.Core.Builder;
 using JobScheduler.Core.Clients;
 using JobScheduler.Core.Execution;
 using JobScheduler.Core.Execution.Interfaces;
@@ -18,7 +19,7 @@ namespace JobScheduler.Core.DependencyInjection
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddJobSchedulerCore
+        public static IJobSchedulerBuilder AddJobScheduler
         (
             this IServiceCollection services, 
             Action<JobSchedulerOptions>? configure = null
@@ -65,16 +66,16 @@ namespace JobScheduler.Core.DependencyInjection
 
             services.AddScoped<IJobExecutionScopeFactory, ServiceProviderJobExecutionScopeFactory>();
 
-            return services;
+            return new JobSchedulerBuilder(services);
         }
 
-        public static IServiceCollection AddJobSchedulerServer(this IServiceCollection services)
+        public static IJobSchedulerBuilder AddServer(this IJobSchedulerBuilder builder)
         {
-            services.AddHostedService<JobProcessingWorker>();
-            services.AddHostedService<LeaseRecoveryWorker>();
-            services.AddHostedService<RecurringJobSchedulerWorker>();
+            builder.Services.AddHostedService<JobProcessingWorker>();
+            builder.Services.AddHostedService<LeaseRecoveryWorker>();
+            builder.Services.AddHostedService<RecurringJobSchedulerWorker>();
 
-            return services;
+            return builder;
         }
 
         // used to register clients job handler
