@@ -2,7 +2,6 @@
 using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Client.Email.Failure;
 using JobScheduler.Client.Email.Success;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace JobScheduler.Client.Controllers
