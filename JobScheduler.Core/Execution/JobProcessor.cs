@@ -98,14 +98,14 @@ namespace JobScheduler.Core.Execution
             }
 
             var delay = GetRetryDelay(job.AttemptCount);
-            var availableAt = TimeProvider.System.GetUtcNow().Add(delay);
+            var availableAt = _timeProvider.GetUtcNow().Add(delay);
 
             var retryResult = await _jobStore
                 .MarkRetryingAsync(
                     job.Id,
                     job.LockToken,
                     error,
-                    TimeProvider.System.GetUtcNow().Add(delay),
+                    availableAt,
                     ct
                 );
 
