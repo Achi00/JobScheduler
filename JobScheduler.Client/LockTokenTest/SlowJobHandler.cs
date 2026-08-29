@@ -19,7 +19,7 @@ namespace JobScheduler.Client.LockTokenTest
                 context.AttemptCount
             );
 
-            await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
+            await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
         }
     }
 
