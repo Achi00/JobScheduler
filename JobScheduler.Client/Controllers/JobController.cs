@@ -2,6 +2,7 @@
 using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Client.Email.Failure;
 using JobScheduler.Client.Email.Success;
+using JobScheduler.Client.LockTokenTest;
 using Microsoft.AspNetCore.Mvc;
 
 namespace JobScheduler.Client.Controllers
@@ -62,6 +63,19 @@ namespace JobScheduler.Client.Controllers
             var jobId = await jobs.ScheduleAsync(
                 new SendEmailJob(Guid.NewGuid(), "scheduled-welcome"),
                 DateTimeOffset.UtcNow.AddSeconds(20),
+                ct);
+
+            return Accepted(new
+            {
+                JobId = jobId
+            });
+        }
+
+        [HttpPost("Delayed")]
+        public async Task<IActionResult> DelayJob(IBackgroundJobClient jobs, CancellationToken ct)
+        {
+            var jobId = await jobs.EnqueueAsync(
+                new SlowJob("slow-job-test"),
                 ct);
 
             return Accepted(new
