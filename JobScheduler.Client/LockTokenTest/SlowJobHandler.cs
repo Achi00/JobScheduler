@@ -5,9 +5,9 @@ namespace JobScheduler.Client.LockTokenTest
 {
     public sealed class SlowJobHandler : IJobHandler<SlowJob>
     {
-        public Task HandleAsync(SlowJob payload, JobExecutionContext context, CancellationToken cancellationToken)
+        public async Task HandleAsync(SlowJob payload, JobExecutionContext context, CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
         }
     }
 

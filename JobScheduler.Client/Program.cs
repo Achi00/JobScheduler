@@ -1,6 +1,7 @@
 using JobScheduler.Abstractions.Jobs.Interfaces;
 using JobScheduler.Client.Email.Failure;
 using JobScheduler.Client.Email.Success;
+using JobScheduler.Client.LockTokenTest;
 using JobScheduler.Core.DependencyInjection;
 using JobScheduler.Storage.SqlServer.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +29,8 @@ builder.Services.AddSqlServerJobStorage(builder.Configuration.GetConnectionStrin
 builder.Services.AddJob<SendEmailJob, SendEmailJobHandler>();
 // add failing job handler for testing
 builder.Services.AddJob<FailingJob, FailingJobHandler>();
+// simulationg delayed handler with lockeduntil is soon to expire
+builder.Services.AddJob<SlowJob, SlowJobHandler>();
 
 var app = builder.Build();
 
