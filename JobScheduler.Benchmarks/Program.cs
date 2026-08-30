@@ -6,6 +6,7 @@ using JobScheduler.Storage.SqlServer.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Diagnostics;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -17,14 +18,32 @@ builder.Services.AddSqlServerJobStorage("Server=localhost;Database=JobScheduler;
 
 builder.Services.AddJob<NoOpJob, NoOpJobHandler>();
 
-var services = new ServiceCollection();
-
 using var host = builder.Build();
-
-await host.StartAsync();
 
 var client = host.Services.GetRequiredService<IBackgroundJobClient>();
 
 Console.WriteLine("Benchmark host started.");
+
+// seeding
+int count = 5000;
+
+Console.WriteLine($"Seeding {count} jobs");
+
+var benchmarkId = Guid.NewGuid();
+
+for (var i = 0; i < count; i++)
+{
+    await client.EnqueueAsync(
+        new NoOpJob(benchmarkId, i));
+}
+
+Console.WriteLine("Seeding completed");
+
+await host.StartAsync();
+
+Console.WriteLine("Scheduler started");
+
+// workers should drain jobs in db
+var sw = Stopwatch.StartNew();
 
 await host.StopAsync();
