@@ -54,7 +54,7 @@ while (true)
 {
     var remaining = await DataAccess.GetRemainingJobsAsync(
         connection,
-        benchmarkId.ToString(),
+        "JobScheduler.Benchmarks.NoOpJob",
         CancellationToken.None);
 
     if (remaining == 0)
