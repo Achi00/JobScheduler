@@ -1,4 +1,5 @@
 ﻿using JobScheduler.EntityFrameworkCore.DependencyInjection;
+using JobScheduler.EntityFrameworkCore.Interfaces;
 using JobScheduler.EntityFrameworkCore.Persistence.Context;
 using JobScheduler.Storage.EntityFrameworkCore.Interfaces;
 using JobScheduler.Storage.SqlServer.Options;
@@ -27,6 +28,7 @@ namespace JobScheduler.Storage.SqlServer.DependencyInjection
             }
 
             services.AddSingleton<IJobStoreCommandFactory, SqlServerJobStoreCommandFactory>();
+            services.AddSingleton<IRecurringJobStoreCommandFactory, SqlServerRecurringJobStoreCommandFactory>();
 
             return services;
         }

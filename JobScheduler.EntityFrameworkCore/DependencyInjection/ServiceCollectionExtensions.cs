@@ -1,6 +1,8 @@
 ﻿using JobScheduler.EntityFrameworkCore.Persistence.Context;
 using JobScheduler.EntityFrameworkCore.Storage;
 using JobScheduler.Storage.Abstractions.Jobs;
+using JobScheduler.Storage.Abstractions.RecurringJobs;
+using JobScheduler.Storage.Abstractions.UnitOfWork;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,6 +17,8 @@ namespace JobScheduler.EntityFrameworkCore.DependencyInjection
             services.AddDbContext<JobSchedulerDbContext>(configureDbContext);
 
             services.AddScoped<IJobStore, EntityFrameworkJobStore>();
+            services.AddScoped<IRecurringJobStore, EntityFrameworkRecurringJobStore>();
+            services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
             return services;
         }

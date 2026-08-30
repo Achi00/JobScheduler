@@ -4,7 +4,7 @@ using JobScheduler.Core.Enums;
 using JobScheduler.Core.Execution;
 using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Options;
-using JobScheduler.Core.Registry;
+using JobScheduler.Core.Registry.Interfaces;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,6 +19,7 @@ namespace JobScheduler.Test.Core
         private readonly Mock<IJobExecutionScopeFactory> _executionScopeFactoryMock;
         private readonly Mock<IJobRegistry> _jobRegistryMock;
         private readonly Mock<ILogger<JobProcessor>> _loggerMock;
+        private readonly Mock<IOptionsMonitor<JobSchedulerOptions>> _optionsMock;
 
 
         private readonly JobSchedulerOptions _options;
@@ -34,6 +35,11 @@ namespace JobScheduler.Test.Core
             {
                 // defaults
             };
+
+            _optionsMock = new Mock<IOptionsMonitor<JobSchedulerOptions>>();
+            _optionsMock
+                .Setup(x => x.CurrentValue)
+                .Returns(_options);
         }
 
         private JobProcessor CreateProcessor()
@@ -44,7 +50,7 @@ namespace JobScheduler.Test.Core
                 _jobStoreMock.Object,
                 _jobRegistryMock.Object,
                 _executionScopeFactoryMock.Object,
-                Options.Create(_options),
+                _optionsMock.Object,
                 timeProviderMock.Object,
                 _loggerMock.Object);
         }

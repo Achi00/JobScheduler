@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.28" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\JobScheduler.Abstractions\JobScheduler.Abstractions.csproj" />
   </ItemGroup>
 

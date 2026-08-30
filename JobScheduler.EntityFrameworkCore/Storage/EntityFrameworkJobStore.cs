@@ -185,7 +185,7 @@ namespace JobScheduler.EntityFrameworkCore.Storage
                 lockToken,
                 cancellationToken);
         }
-        // handles jobs where status processing + expired jobs to retrying or failed
+        // handles jobs where status is processing but LockedUntil is expired
         // incrementing token while recovering, bacause old worker with old LockToken should not be able to carry on expired job after it hang or slept
         // no async, avoid spaming async state machine
         public Task<int> RecoverExpiredJobsAsync(int batchSize, TimeSpan recoveryDelay, CancellationToken cancellationToken)

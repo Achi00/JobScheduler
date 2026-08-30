@@ -3,7 +3,7 @@ using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Enums;
 using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Options;
-using JobScheduler.Core.Registry;
+using JobScheduler.Core.Registry.Interfaces;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -19,7 +19,7 @@ namespace JobScheduler.Core.Execution
         private readonly IJobStore _jobStore;
         private readonly IJobRegistry _jobRegistry;
         private readonly IJobExecutionScopeFactory _executionScopeFactory;
-        private readonly JobSchedulerOptions _options;
+        private readonly IOptionsMonitor<JobSchedulerOptions> _options;
         private readonly TimeProvider _timeProvider;
         private readonly ILogger<JobProcessor> _logger;
 
@@ -27,14 +27,14 @@ namespace JobScheduler.Core.Execution
             IJobStore jobStore,
             IJobRegistry jobRegistry,
             IJobExecutionScopeFactory executionScopeFactory,
-            IOptions<JobSchedulerOptions> options,
+            IOptionsMonitor<JobSchedulerOptions> options,
             TimeProvider timeProvider,
             ILogger<JobProcessor> logger)
         {
             _jobStore = jobStore;
             _jobRegistry = jobRegistry;
             _executionScopeFactory = executionScopeFactory;
-            _options = options.Value;
+            _options = options;
             _timeProvider = timeProvider;
             _logger = logger;
         }
@@ -42,7 +42,7 @@ namespace JobScheduler.Core.Execution
         public async Task<JobProcessResult> TryProcessOneAsync(string workerId, CancellationToken ct)
         {
             // TryClaimNextRunnableJobAsync mark's job as processing state
-            var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, _options.LockDuration, ct);
+            var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, _options.CurrentValue.LockDuration, ct);
 
             if (job is null)
             {
@@ -98,14 +98,14 @@ namespace JobScheduler.Core.Execution
             }
 
             var delay = GetRetryDelay(job.AttemptCount);
-            var availableAt = TimeProvider.System.GetUtcNow().Add(delay);
+            var availableAt = _timeProvider.GetUtcNow().Add(delay);
 
             var retryResult = await _jobStore
                 .MarkRetryingAsync(
                     job.Id,
                     job.LockToken,
                     error,
-                    TimeProvider.System.GetUtcNow().Add(delay),
+                    availableAt,
                     ct
                 );
 
@@ -238,11 +238,6 @@ namespace JobScheduler.Core.Execution
         {
             return attemptCount switch
             {
-                //// testing
-                //1 => TimeSpan.FromSeconds(5),
-                //2 => TimeSpan.FromSeconds(5),
-                //3 => TimeSpan.FromSeconds(5),
-                //_ => TimeSpan.FromSeconds(5)
                 1 => TimeSpan.FromSeconds(10),
                 2 => TimeSpan.FromMinutes(1),
                 3 => TimeSpan.FromMinutes(5),

@@ -1,4 +1,4 @@
-﻿namespace JobScheduler.Core.Recurring
+﻿namespace JobScheduler.Core.Recurring.Interfaces
 {
     public interface ICronScheduler
     {

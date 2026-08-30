@@ -10,10 +10,10 @@ namespace JobScheduler.Core.Workers
     internal sealed class LeaseRecoveryWorker : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
-        private readonly IOptions<JobSchedulerOptions> _options;
+        private readonly IOptionsMonitor<JobSchedulerOptions> _options;
         private readonly ILogger<LeaseRecoveryWorker> _logger;
 
-        public LeaseRecoveryWorker(IServiceScopeFactory scopeFactory, IOptions<JobSchedulerOptions> options, ILogger<LeaseRecoveryWorker> logger)
+        public LeaseRecoveryWorker(IServiceScopeFactory scopeFactory, IOptionsMonitor<JobSchedulerOptions> options, ILogger<LeaseRecoveryWorker> logger)
         {
             _scopeFactory = scopeFactory;
             _options = options;
@@ -22,7 +22,7 @@ namespace JobScheduler.Core.Workers
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             // workes based on options passed interval
-            using var timer = new PeriodicTimer(_options.Value.LeaseRecoveryInterval);
+            using var timer = new PeriodicTimer(_options.CurrentValue.LeaseRecoveryInterval);
             while (await timer.WaitForNextTickAsync(stoppingToken))
             {
                 try
@@ -34,8 +34,8 @@ namespace JobScheduler.Core.Workers
                         scope.ServiceProvider.GetRequiredService<IJobStore>();
 
                     var recovered = await store.RecoverExpiredJobsAsync(
-                        _options.Value.LeaseRecoveryBatchSize,
-                        _options.Value.LeaseRecoveryInterval,
+                        _options.CurrentValue.LeaseRecoveryBatchSize,
+                        _options.CurrentValue.LeaseRecoveryInterval,
                         stoppingToken);
 
                     if (recovered > 0)

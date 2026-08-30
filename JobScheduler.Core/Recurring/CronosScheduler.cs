@@ -1,4 +1,5 @@
 ﻿using Cronos;
+using JobScheduler.Core.Recurring.Interfaces;
 
 namespace JobScheduler.Core.Recurring
 {

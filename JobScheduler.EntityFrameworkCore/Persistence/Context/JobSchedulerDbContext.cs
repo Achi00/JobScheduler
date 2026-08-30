@@ -7,7 +7,7 @@ namespace JobScheduler.EntityFrameworkCore.Persistence.Context
     {
         internal DbSet<JobEntity> Jobs => Set<JobEntity>();
         internal DbSet<JobStateEntity> JobStates => Set<JobStateEntity>();
-        internal DbSet<RecurringJob> RecurringJob => Set<RecurringJob>();
+        internal DbSet<RecurringJobEntity> RecurringJob => Set<RecurringJobEntity>();
         public JobSchedulerDbContext(DbContextOptions<JobSchedulerDbContext> options) : base(options)
         {
         }
