@@ -1,9 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JobScheduler.Abstractions\JobScheduler.Abstractions.csproj" />
+    <ProjectReference Include="..\JobScheduler.Core\JobScheduler.Core.csproj" />
+    <ProjectReference Include="..\JobScheduler.EntityFrameworkCore\JobScheduler.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\JobScheduler.Persistence.SqlServer\JobScheduler.Storage.SqlServer.csproj" />
+    <ProjectReference Include="..\JobScheduler.Storage.Abstractions\JobScheduler.Storage.Abstractions.csproj" />
+  </ItemGroup>
 
 </Project>
