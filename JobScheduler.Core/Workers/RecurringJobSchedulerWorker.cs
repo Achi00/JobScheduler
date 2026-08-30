@@ -40,6 +40,8 @@ namespace JobScheduler.Core.Workers
                     {
                         _logger.LogInformation("Dispatched {Count} recurring job instance(s).", dispatched);
                     }
+
+                    await Task.Delay(_options.CurrentValue.RecurringCheckInterval, stoppingToken);
                 }
                 // stopping toket passed
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -50,8 +52,6 @@ namespace JobScheduler.Core.Workers
                 {
                     _logger.LogError(ex, "Recurring job scheduler failed.");
                 }
-
-                await Task.Delay(_options.CurrentValue.RecurringCheckInterval, stoppingToken);
             }
 
             _logger.LogInformation("Recurring job scheduler stopped.");
