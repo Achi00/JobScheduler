@@ -84,7 +84,15 @@ namespace JobScheduler.Core.HostedServices
                         "Job worker {WorkerId} failed.",
                         workerId);
 
-                    await DelayWithJitterAsync(stoppingToken);
+                    try
+                    {
+                        await DelayWithJitterAsync(stoppingToken);
+                    }
+                    catch (OperationCanceledException)
+                        when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
                 }
             }
 
