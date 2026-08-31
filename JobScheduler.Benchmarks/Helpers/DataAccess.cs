@@ -6,19 +6,25 @@ namespace JobScheduler.Benchmarks.Helpers
     public static class DataAccess
     {
         // helper method to get values on seeded data with sql connection
-        public static async Task<long> GetRemainingJobsAsync(SqlConnection connection, string jobType, CancellationToken cancellationToken)
+        public static async Task<long> GetRemainingJobsAsync(SqlConnection connection, Guid benchmarkId, string jobType, CancellationToken cancellationToken)
         {
             await using var command = connection.CreateCommand();
 
             command.CommandText = """
-                SELECT COUNT_BIG(*)
-                FROM Jobs
-                WHERE JobType = @JobType
-                  AND Status <> @Succeeded;
-                """;
+                 SELECT COUNT_BIG(*)
+                 FROM Jobs
+                 WHERE JobType = @JobType
+                   AND Status <> @Succeeded
+                   AND JSON_VALUE(PayloadJson, '$.BenchmarkId') = @BenchmarkId;
+                 """;
 
             command.Parameters.AddWithValue("@JobType", jobType);
-            command.Parameters.AddWithValue("@Succeeded", (int)JobStatus.Succeeded);
+            command.Parameters.AddWithValue(
+                "@Succeeded",
+                (int)JobStatus.Succeeded);
+            command.Parameters.AddWithValue(
+                "@BenchmarkId",
+                benchmarkId.ToString());
 
             var result =
                 await command.ExecuteScalarAsync(cancellationToken);

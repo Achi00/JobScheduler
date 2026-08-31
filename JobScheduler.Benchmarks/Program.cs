@@ -52,10 +52,14 @@ await host.StartAsync();
 
 while (true)
 {
-    var remaining = await DataAccess.GetRemainingJobsAsync(
-        connection,
-        "JobScheduler.Benchmarks.NoOpJob",
-        CancellationToken.None);
+    var remaining =
+        await DataAccess.GetRemainingJobsAsync(
+            connection,
+            benchmarkId,
+            "JobScheduler.Benchmarks.Models.NoOpJob",
+            CancellationToken.None);
+
+    Console.WriteLine($"Remaining: {remaining}");
 
     if (remaining == 0)
     {
