@@ -22,9 +22,10 @@ namespace JobScheduler.Core.Workers
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             // workes based on options passed interval
+            using var timer = new PeriodicTimer(_options.CurrentValue.LeaseRecoveryInterval);
+            
             try
             {
-                using var timer = new PeriodicTimer(_options.CurrentValue.LeaseRecoveryInterval);
                 while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
                     try
@@ -47,6 +48,10 @@ namespace JobScheduler.Core.Workers
                                 recovered);
                         }
                     }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
                     catch (Exception exception)
                     {
                         _logger.LogError(
@@ -56,7 +61,7 @@ namespace JobScheduler.Core.Workers
                 }
             }
             catch (OperationCanceledException)
-                    when (stoppingToken.IsCancellationRequested)
+            when (stoppingToken.IsCancellationRequested)
             {
             }
         }
