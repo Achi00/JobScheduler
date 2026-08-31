@@ -22,40 +22,42 @@ namespace JobScheduler.Core.Workers
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             // workes based on options passed interval
-            using var timer = new PeriodicTimer(_options.CurrentValue.LeaseRecoveryInterval);
-            while (await timer.WaitForNextTickAsync(stoppingToken))
+            try
             {
-                try
+                using var timer = new PeriodicTimer(_options.CurrentValue.LeaseRecoveryInterval);
+                while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
-                    await using var scope =
-                        _scopeFactory.CreateAsyncScope();
-
-                    var store =
-                        scope.ServiceProvider.GetRequiredService<IJobStore>();
-
-                    var recovered = await store.RecoverExpiredJobsAsync(
-                        _options.CurrentValue.LeaseRecoveryBatchSize,
-                        _options.CurrentValue.LeaseRecoveryInterval,
-                        stoppingToken);
-
-                    if (recovered > 0)
+                    try
                     {
-                        _logger.LogWarning(
-                            "Recovered {RecoveredCount} jobs with expired leases.",
-                            recovered);
+                        await using var scope =
+                            _scopeFactory.CreateAsyncScope();
+
+                        var store =
+                            scope.ServiceProvider.GetRequiredService<IJobStore>();
+
+                        var recovered = await store.RecoverExpiredJobsAsync(
+                            _options.CurrentValue.LeaseRecoveryBatchSize,
+                            _options.CurrentValue.LeaseRecoveryInterval,
+                            stoppingToken);
+
+                        if (recovered > 0)
+                        {
+                            _logger.LogWarning(
+                                "Recovered {RecoveredCount} jobs with expired leases.",
+                                recovered);
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.LogError(
+                            exception,
+                            "An error occurred while recovering expired job leases.");
                     }
                 }
-                catch (OperationCanceledException)
+            }
+            catch (OperationCanceledException)
                     when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception exception)
-                {
-                    _logger.LogError(
-                        exception,
-                        "An error occurred while recovering expired job leases.");
-                }
+            {
             }
         }
     }
