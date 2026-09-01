@@ -206,12 +206,13 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
         // TESTING: trying to use READPAST/UPDLOCK/ROWLOCK so no worker can access and lock job between select and update
         // no async, avoids spaming async state machine
-        public Task<JobRecord?> TryClaimNextRunnableJobAsync(string workerId, TimeSpan lockDuration, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<JobRecord>> TryClaimNextRunnableJobAsync(string workerId, int batchSize, TimeSpan lockDuration, CancellationToken cancellationToken)
         {
             return ExecuteProviderCommandAsync(
                 connection =>
                     _providerFactory.CreateClaimNextRunnableJobCommand(
                         connection,
+                        batchSize,
                         workerId,
                         lockDuration),
                 ReadClaimedJobAsync, 
@@ -285,27 +286,22 @@ namespace JobScheduler.EntityFrameworkCore.Storage
         }
 
         // db -> JobRecord
-        private static async Task<JobRecord?> ReadClaimedJobAsync(
+        private static async Task<IReadOnlyList<JobRecord>> ReadClaimedJobAsync(
             DbCommand command,
             CancellationToken cancellationToken)
         {
-            await using var reader =
-                await command.ExecuteReaderAsync(cancellationToken);
+            // pooling batch of jobs not top 1
+            var results = new List<JobRecord>();
 
-            if (!await reader.ReadAsync(cancellationToken))
-            {
-                return null;
-            }
-
-            var entity = JobEntityDataReader.Read(reader);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
             if (await reader.ReadAsync(cancellationToken))
             {
-                throw new InvalidOperationException(
-                    "The claim operation returned more than one job.");
+                var entity = JobEntityDataReader.Read(reader);
+                results.Add(JobEntityMapper.ToRecord(entity));
             }
 
-            return JobEntityMapper.ToRecord(entity);
+            return results;
         }
     }
 }
