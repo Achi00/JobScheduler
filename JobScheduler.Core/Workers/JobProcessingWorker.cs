@@ -77,6 +77,11 @@ namespace JobScheduler.Core.HostedServices
                 {
                     break;
                 }
+                catch (ObjectDisposedException) when (stoppingToken.IsCancellationRequested)
+                {
+                    // host is tearing down mid-iteration,expected shutdown race between many workers, can dispose objectt when some worker is mid cycle
+                    break;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(
