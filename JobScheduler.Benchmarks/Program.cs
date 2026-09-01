@@ -3,10 +3,12 @@ using JobScheduler.Benchmarks.Handlers;
 using JobScheduler.Benchmarks.Helpers;
 using JobScheduler.Benchmarks.Models;
 using JobScheduler.Core.DependencyInjection;
+using JobScheduler.Core.Options;
 using JobScheduler.Storage.SqlServer.DependencyInjection;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using System.Diagnostics;
 
 const string connectionString =
@@ -14,18 +16,25 @@ const string connectionString =
 
 var builder = Host.CreateApplicationBuilder(args);
 
+// options
+builder.Services.Configure<JobSchedulerOptions>(
+    builder.Configuration.GetSection("JobSchedulerOptions")
+);
+
+// register services from code
 builder.Services
     .AddJobScheduler()
     .AddServer();
 
+// storage
 builder.Services.AddSqlServerJobStorage(connectionString);
 
+// custom job model + handlers
 builder.Services.AddJob<NoOpJob, NoOpJobHandler>();
 
 using var host = builder.Build();
 
-var client =
-    host.Services.GetRequiredService<IBackgroundJobClient>();
+var client = host.Services.GetRequiredService<IBackgroundJobClient>();
 
 Console.WriteLine("Benchmark host started.");
 
