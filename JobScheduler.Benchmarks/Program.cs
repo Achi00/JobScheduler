@@ -36,6 +36,9 @@ using var host = builder.Build();
 
 var client = host.Services.GetRequiredService<IBackgroundJobClient>();
 
+var options = host.Services.GetRequiredService<IOptions<JobSchedulerOptions>>();
+
+
 Console.WriteLine("Benchmark host started.");
 
 const int count = 5000;
@@ -85,3 +88,4 @@ var jobsPerSecond = count / elapsed.TotalSeconds;
 
 Console.WriteLine($"Elapsed: {elapsed}");
 Console.WriteLine($"Jobs/sec: {jobsPerSecond:N0}");
+Console.WriteLine($"Worker Count: {options.Value.WorkerCount}");
