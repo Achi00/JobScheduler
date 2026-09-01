@@ -7,6 +7,7 @@ using JobScheduler.Storage.EntityFrameworkCore.Mappers;
 using JobScheduler.Storage.EntityFrameworkCore.Readers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Options;
 using System.Data;
 using System.Data.Common;
 

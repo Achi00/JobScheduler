@@ -20,6 +20,7 @@ namespace JobScheduler.Storage.SqlServer.Provider
          */
         public DbCommand CreateClaimNextRunnableJobCommand(
             DbConnection connection,
+            int batchSize,
             string workerId,
             TimeSpan lockDuration)
         {
@@ -41,7 +42,7 @@ namespace JobScheduler.Storage.SqlServer.Provider
 
                 ;WITH Candidate AS
                 (
-                    SELECT TOP (1) *
+                    SELECT TOP (@BatchSize) *
                     FROM [dbo].[Jobs] WITH
                     (
                         UPDLOCK,
@@ -64,8 +65,7 @@ namespace JobScheduler.Storage.SqlServer.Provider
                 SET
                     [Status] = @Processing,
                     [LockedBy] = @WorkerId,
-                    [LockedUntil] =
-                        DATEADD(MILLISECOND, @LockDurationMilliseconds, @Now),
+                    [LockedUntil] = DATEADD(MILLISECOND, @LockDurationMilliseconds, @Now),
                     [LockToken] = [LockToken] + 1,
                     [AttemptCount] = [AttemptCount] + 1,
                     [AvailableAt] = NULL,
@@ -96,6 +96,12 @@ namespace JobScheduler.Storage.SqlServer.Provider
                 "@WorkerId",
                 DbType.String,
                 workerId);
+
+            AddParameter(
+                command,
+                "@BatchSize",
+                DbType.UInt32,
+                batchSize);
 
             AddParameter(
                 command,
