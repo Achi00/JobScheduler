@@ -1,6 +1,13 @@
 <Solution>
+  <Folder Name="/Benchmark/">
+    <Project Path="JobScheduler.Benchmarks/JobScheduler.Benchmarks.csproj" Id="c6142cce-4a06-40ac-aa68-72a523b663ae" />
+  </Folder>
   <Folder Name="/Core/">
+    <Project Path="JobScheduler.Abstractions/JobScheduler.Abstractions.csproj" Id="cfc0ccb3-2ccd-4443-a4b0-f8f8414c2ad9" />
     <Project Path="JobScheduler.Core/JobScheduler.Core.csproj" Id="7edb94b1-af01-4acc-99c5-85601e009980" />
+  </Folder>
+  <Folder Name="/Presentation/">
+    <Project Path="JobScheduler.Client/JobScheduler.Client.csproj" Id="6d4c77eb-5070-43fa-ab59-5a6f4ccf7247" />
   </Folder>
   <Folder Name="/Storage/">
     <Project Path="JobScheduler.EntityFrameworkCore/JobScheduler.EntityFrameworkCore.csproj" Id="3fb29b8f-78d2-4245-bc85-df09cad220f7" />
@@ -10,7 +17,4 @@
   <Folder Name="/Tests/">
     <Project Path="JobScheduler.Test/JobScheduler.Test.csproj" Id="e22f57cf-fd86-44cd-be27-c6c2736915b6" />
   </Folder>
-  <Project Path="JobScheduler.Abstractions/JobScheduler.Abstractions.csproj" Id="cfc0ccb3-2ccd-4443-a4b0-f8f8414c2ad9" />
-  <Project Path="JobScheduler.Benchmarks/JobScheduler.Benchmarks.csproj" Id="c6142cce-4a06-40ac-aa68-72a523b663ae" />
-  <Project Path="JobScheduler.Client/JobScheduler.Client.csproj" Id="6d4c77eb-5070-43fa-ab59-5a6f4ccf7247" />
 </Solution>
