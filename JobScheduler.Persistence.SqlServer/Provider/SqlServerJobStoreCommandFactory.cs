@@ -100,7 +100,7 @@ namespace JobScheduler.Storage.SqlServer.Provider
             AddParameter(
                 command,
                 "@BatchSize",
-                DbType.UInt32,
+                DbType.Int32,
                 batchSize);
 
             AddParameter(
