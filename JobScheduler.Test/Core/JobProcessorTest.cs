@@ -56,7 +56,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenNoJobIsAvailable_ShouldReturnWithoutProcessing()
+        public async Task ProcessAsync_WhenNoJobIsAvailable_ShouldReturnWithoutProcessing()
         {
             // arrange
             var job = new JobRecord
@@ -70,17 +70,12 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-            _jobStoreMock.Setup(x => x.TryClaimNextRunnableJobAsync(
-                It.IsAny<string>(),
-                It.IsAny<TimeSpan>(),
-                It.IsAny<CancellationToken>()))
-                    .ReturnsAsync((JobRecord?)null
-            );
+
 
             var processor = CreateProcessor();
 
             // act
-            await processor.ProcessAsync("worker-1", CancellationToken.None);
+            await processor.ProcessAsync(job, CancellationToken.None);
 
             // assert
             _jobStoreMock.Verify(
@@ -109,7 +104,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenJobIsAvailable_ShouldContinueProcessing()
+        public async Task ProcessAsync_WhenJobIsAvailable_ShouldContinueProcessing()
         {
             // Arrange
             var job = new JobRecord
@@ -124,12 +119,6 @@ namespace JobScheduler.Test.Core
                 AvailableAt = DateTimeOffset.UtcNow
             };
 
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
 
             _jobStoreMock
                 .Setup(s => s.MarkSucceededAsync(
@@ -142,7 +131,7 @@ namespace JobScheduler.Test.Core
 
             var processor = CreateProcessor();
 
-            var result = await processor.ProcessAsync("worker-1", CancellationToken.None);
+            var result = await processor.ProcessAsync(job, CancellationToken.None);
 
             Assert.Equal(JobProcessResult.Succeeded, result);
 
@@ -163,7 +152,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenExecutionThrowsAndAttemptsRemain_ShouldScheduleRetry()
+        public async Task ProcessAsync_WhenExecutionThrowsAndAttemptsRemain_ShouldScheduleRetry()
         {
             var job = new JobRecord
             {
@@ -176,13 +165,6 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
 
             _jobStoreMock
                 .Setup(x => x.MarkRetryingAsync(
@@ -199,7 +181,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             var result = await processor.ProcessAsync(
-                "worker-1",
+                job,
                 CancellationToken.None);
 
             // assert
@@ -229,7 +211,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenExecutionThrowsAndMaxAttemptsReached_ShouldMarkFailed()
+        public async Task ProcessAsync_WhenExecutionThrowsAndMaxAttemptsReached_ShouldMarkFailed()
         {
             var job = new JobRecord
             {
@@ -242,13 +224,6 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
 
             _jobStoreMock
                 .Setup(x => x.MarkFailedAsync(
@@ -273,7 +248,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             var result = await processor.ProcessAsync(
-                "worker-1",
+                job,
                 CancellationToken.None);
 
             // assert
@@ -303,7 +278,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenMarkSucceededReturnsLockTokenMismatch_ShouldReportLostOwnership()
+        public async Task ProcessAsync_WhenMarkSucceededReturnsLockTokenMismatch_ShouldReportLostOwnership()
         {
             var job = new JobRecord
             {
@@ -316,14 +291,6 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-
-            // returns job
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
 
             // tries to update, in this case token mismatch
             _jobStoreMock
@@ -338,7 +305,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             var result = await processor.ProcessAsync(
-                "worker-1",
+                job,
                 CancellationToken.None);
 
             _jobStoreMock.Verify(
@@ -360,7 +327,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenMarkRetryingReturnsLockTokenMismatch_ShouldReportLostOwnership()
+        public async Task ProcessAsync_WhenMarkRetryingReturnsLockTokenMismatch_ShouldReportLostOwnership()
         {
             var job = new JobRecord
             {
@@ -373,14 +340,7 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-
-            // returns job
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
+           
 
             _jobStoreMock
                 .Setup(x => x.MarkRetryingAsync(
@@ -396,7 +356,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             var result = await processor.ProcessAsync(
-                "worker-1",
+                job,
                 CancellationToken.None);
 
             _jobStoreMock.Verify(
@@ -427,7 +387,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenMarkFailedReturnsLockTokenMismatch_ShouldReportLostOwnership()
+        public async Task ProcessAsync_WhenMarkFailedReturnsLockTokenMismatch_ShouldReportLostOwnership()
         {
             var job = new JobRecord
             {
@@ -440,14 +400,6 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-
-            // returns job
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
 
             _jobStoreMock
                 .Setup(x => x.MarkFailedAsync(
@@ -462,7 +414,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             var result = await processor.ProcessAsync(
-                "worker-1",
+                job,
                 CancellationToken.None);
 
             _jobStoreMock.Verify(
@@ -493,7 +445,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenMarkSucceededReturnsNotFound_ShouldReportStateChangeFailed()
+        public async Task ProcessAsync_WhenMarkSucceededReturnsNotFound_ShouldReportStateChangeFailed()
         {
             var job = new JobRecord
             {
@@ -506,14 +458,6 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-
-            // returns job
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
 
             _jobStoreMock
                 .Setup(x => x.MarkSucceededAsync(
@@ -527,7 +471,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             var result = await processor.ProcessAsync(
-                "worker-1",
+                job,
                 CancellationToken.None);
 
             _jobStoreMock.Verify(
@@ -566,7 +510,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenMarkSucceededReturnsInvalidState_ShouldReportStateChangeFailed()
+        public async Task ProcessAsync_WhenMarkSucceededReturnsInvalidState_ShouldReportStateChangeFailed()
         {
             var job = new JobRecord
             {
@@ -579,14 +523,6 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-
-            // returns job
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
 
             _jobStoreMock
                 .Setup(x => x.MarkSucceededAsync(
@@ -600,7 +536,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             var result = await processor.ProcessAsync(
-                "worker-1",
+                job,
                 CancellationToken.None);
 
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
@@ -639,7 +575,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenMarkRetryingReturnsNotFound_ShouldReportStateChangeFailed()
+        public async Task ProcessAsync_WhenMarkRetryingReturnsNotFound_ShouldReportStateChangeFailed()
         {
             var job = new JobRecord
             {
@@ -652,14 +588,6 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-
-            // returns job
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
 
             _jobStoreMock
                 .Setup(x => x.MarkRetryingAsync(
@@ -675,7 +603,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             var result = await processor.ProcessAsync(
-                "worker-1",
+                job,
                 CancellationToken.None);
 
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
@@ -714,7 +642,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenMarkRetryingReturnsInvalidState_ShouldReportStateChangeFailed()
+        public async Task ProcessAsync_WhenMarkRetryingReturnsInvalidState_ShouldReportStateChangeFailed()
         {
             var job = new JobRecord
             {
@@ -727,14 +655,6 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-
-            // returns job
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
 
             _jobStoreMock
                 .Setup(x => x.MarkRetryingAsync(
@@ -750,7 +670,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             var result = await processor.ProcessAsync(
-                "worker-1",
+                job,
                 CancellationToken.None);
 
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
@@ -765,7 +685,7 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenMarkFailedReturnsNotFound_ShouldReportStateChangeFailed()
+        public async Task ProcessAsync_WhenMarkFailedReturnsNotFound_ShouldReportStateChangeFailed()
         {
             var job = new JobRecord
             {
@@ -778,14 +698,6 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-
-            // returns job
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
 
             _jobStoreMock
                 .Setup(x => x.MarkFailedAsync(
@@ -800,14 +712,14 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             var result = await processor.ProcessAsync(
-                "worker-1",
+                job,
                 CancellationToken.None);
 
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
         }
 
         [Fact]
-        public async Task TryProcessOneAsync_WhenMarkFailedReturnsInvalidState_ShouldReportStateChangeFailed()
+        public async Task ProcessAsync_WhenMarkFailedReturnsInvalidState_ShouldReportStateChangeFailed()
         {
             var job = new JobRecord
             {
@@ -820,14 +732,6 @@ namespace JobScheduler.Test.Core
                 CreatedAt = DateTimeOffset.UtcNow,
                 AvailableAt = DateTimeOffset.UtcNow
             };
-
-            // returns job
-            _jobStoreMock
-                .Setup(x => x.TryClaimNextRunnableJobAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<TimeSpan>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(job);
 
             _jobStoreMock
                 .Setup(x => x.MarkFailedAsync(
@@ -842,7 +746,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             var result = await processor.ProcessAsync(
-                "worker-1",
+                job,
                 CancellationToken.None);
 
             Assert.Equal(JobProcessResult.StateChangeFailed, result);
