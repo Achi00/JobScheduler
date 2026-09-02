@@ -75,34 +75,36 @@ namespace JobScheduler.Core.Storage
         }
 
         // claim job to specific worker and mark as processing
-        public Task<JobRecord?> TryClaimNextRunnableJobAsync(string workerId, TimeSpan lockDuration, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<JobRecord>> TryClaimNextRunnableJobAsync(string workerId, int batchSize, TimeSpan lockDuration, CancellationToken cancellationToken)
         {
             lock (_lock)
             {
                 var now = DateTimeOffset.UtcNow;
 
-                var job = _jobs
+                var claimable = _jobs
                     .Where(j =>
                         // only check runnalbe status jobs
                         (j.Status is JobStatus.Enqueued or JobStatus.Scheduled or JobStatus.Retrying) &&
                         (j.AvailableAt is null || j.AvailableAt <= now))
                     .OrderBy(j => j.AvailableAt ?? j.CreatedAt)
-                    .FirstOrDefault();
+                    .Take(batchSize)
+                    .ToList();
 
-                if (job is null)
+                var claimed = new List<JobRecord>(claimable.Count);
+
+                foreach (var job in claimable)
                 {
-                    return Task.FromResult<JobRecord?>(null);
+                    job.Status = JobStatus.Processing;
+                    job.StartedAt = now;
+                    job.AttemptCount++;
+                    job.LockedBy = workerId;
+                    job.LockedUntil = now.Add(lockDuration);
+                    job.LockToken++;
+
+                    claimed.Add(Clone(job));
                 }
 
-                job.Status = JobStatus.Processing;
-                job.StartedAt = now;
-                job.AttemptCount++;
-                job.LockedBy = workerId;
-                job.LockedUntil = now.Add(lockDuration);
-                job.LockToken++;
-
-                // return cloned job with different reference, just for memory storage testing
-                return Task.FromResult<JobRecord?>(Clone(job));
+                return Task.FromResult<IReadOnlyList<JobRecord>>(claimed);
             }
         }
 
