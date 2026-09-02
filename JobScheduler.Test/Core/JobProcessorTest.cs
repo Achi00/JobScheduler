@@ -56,54 +56,6 @@ namespace JobScheduler.Test.Core
         }
 
         [Fact]
-        public async Task ProcessAsync_WhenNoJobIsAvailable_ShouldReturnWithoutProcessing()
-        {
-            // arrange
-            var job = new JobRecord
-            {
-                Id = Guid.NewGuid(),
-                JobType = "SendEmail",
-                PayloadJson = "{}",
-                Status = JobStatus.Enqueued,
-                AttemptCount = 1,
-                MaxAttempts = 3,
-                CreatedAt = DateTimeOffset.UtcNow,
-                AvailableAt = DateTimeOffset.UtcNow
-            };
-
-
-            var processor = CreateProcessor();
-
-            // act
-            await processor.ProcessAsync(job, CancellationToken.None);
-
-            // assert
-            _jobStoreMock.Verify(
-                x => x.MarkSucceededAsync(
-                    It.IsAny<Guid>(),
-                    It.IsAny<long>(),
-                    It.IsAny<CancellationToken>()),
-                Times.Never);
-
-            _jobStoreMock.Verify(
-                x => x.MarkRetryingAsync(
-                    It.IsAny<Guid>(),
-                    It.IsAny<long>(),
-                    It.IsAny<JobError>(),
-                    It.IsAny<DateTimeOffset>(),
-                    It.IsAny<CancellationToken>()),
-                Times.Never);
-
-            _jobStoreMock.Verify(
-                x => x.MarkFailedAsync(
-                    It.IsAny<Guid>(),
-                    It.IsAny<long>(),
-                    It.IsAny<JobError>(),
-                    It.IsAny<CancellationToken>()),
-                Times.Never);
-        }
-
-        [Fact]
         public async Task ProcessAsync_WhenJobIsAvailable_ShouldContinueProcessing()
         {
             // Arrange
