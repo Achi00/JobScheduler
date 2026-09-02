@@ -39,16 +39,8 @@ namespace JobScheduler.Core.Execution
             _logger = logger;
         }
 
-        public async Task<JobProcessResult> TryProcessOneAsync(string workerId, CancellationToken ct)
+        public async Task<JobProcessResult> ProcessAsync(JobRecord job, CancellationToken ct)
         {
-            // TryClaimNextRunnableJobAsync mark's job as processing state
-            var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, _options.CurrentValue.LockDuration, ct);
-
-            if (job is null)
-            {
-                return JobProcessResult.NoJobAvailable;
-            }
-
             var executor = _jobRegistry.GetExecutor(job.JobType);
 
             await using var scope = _executionScopeFactory.CreateScope();

@@ -80,7 +80,7 @@ namespace JobScheduler.Test.Core
             var processor = CreateProcessor();
 
             // act
-            await processor.TryProcessOneAsync("worker-1", CancellationToken.None);
+            await processor.ProcessAsync("worker-1", CancellationToken.None);
 
             // assert
             _jobStoreMock.Verify(
@@ -142,7 +142,7 @@ namespace JobScheduler.Test.Core
 
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync("worker-1", CancellationToken.None);
+            var result = await processor.ProcessAsync("worker-1", CancellationToken.None);
 
             Assert.Equal(JobProcessResult.Succeeded, result);
 
@@ -198,7 +198,7 @@ namespace JobScheduler.Test.Core
             // act
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync(
+            var result = await processor.ProcessAsync(
                 "worker-1",
                 CancellationToken.None);
 
@@ -272,7 +272,7 @@ namespace JobScheduler.Test.Core
             // act
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync(
+            var result = await processor.ProcessAsync(
                 "worker-1",
                 CancellationToken.None);
 
@@ -337,7 +337,7 @@ namespace JobScheduler.Test.Core
 
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync(
+            var result = await processor.ProcessAsync(
                 "worker-1",
                 CancellationToken.None);
 
@@ -395,7 +395,7 @@ namespace JobScheduler.Test.Core
 
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync(
+            var result = await processor.ProcessAsync(
                 "worker-1",
                 CancellationToken.None);
 
@@ -461,7 +461,7 @@ namespace JobScheduler.Test.Core
 
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync(
+            var result = await processor.ProcessAsync(
                 "worker-1",
                 CancellationToken.None);
 
@@ -526,7 +526,7 @@ namespace JobScheduler.Test.Core
 
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync(
+            var result = await processor.ProcessAsync(
                 "worker-1",
                 CancellationToken.None);
 
@@ -599,7 +599,7 @@ namespace JobScheduler.Test.Core
 
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync(
+            var result = await processor.ProcessAsync(
                 "worker-1",
                 CancellationToken.None);
 
@@ -674,7 +674,7 @@ namespace JobScheduler.Test.Core
 
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync(
+            var result = await processor.ProcessAsync(
                 "worker-1",
                 CancellationToken.None);
 
@@ -749,7 +749,7 @@ namespace JobScheduler.Test.Core
 
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync(
+            var result = await processor.ProcessAsync(
                 "worker-1",
                 CancellationToken.None);
 
@@ -799,7 +799,7 @@ namespace JobScheduler.Test.Core
 
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync(
+            var result = await processor.ProcessAsync(
                 "worker-1",
                 CancellationToken.None);
 
@@ -841,7 +841,7 @@ namespace JobScheduler.Test.Core
 
             var processor = CreateProcessor();
 
-            var result = await processor.TryProcessOneAsync(
+            var result = await processor.ProcessAsync(
                 "worker-1",
                 CancellationToken.None);
 

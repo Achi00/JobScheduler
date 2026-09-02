@@ -8,6 +8,8 @@
         public TimeSpan LockDuration { get; set; } = TimeSpan.FromMinutes(5);
         public TimeSpan LeaseRecoveryInterval { get; set; } = TimeSpan.FromMinutes(1);
 
+        public int BatchSize { get; set; } = 10;
+
         public int LeaseRecoveryBatchSize { get; set; } = 100;
 
         public int DefaultMaxAttempts { get; set; } = 3;

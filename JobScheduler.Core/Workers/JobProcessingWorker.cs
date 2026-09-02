@@ -1,6 +1,7 @@
 ﻿using JobScheduler.Core.Enums;
 using JobScheduler.Core.Execution;
 using JobScheduler.Core.Options;
+using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -14,16 +15,19 @@ namespace JobScheduler.Core.HostedServices
     internal sealed class JobProcessingWorker : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IJobStore _jobStore;
         // using IOptionsMonitor for live config update, this service is always singleton, otherwise IOptions
         private readonly IOptionsMonitor<JobSchedulerOptions> _options;
         private readonly ILogger<JobProcessingWorker> _logger;
 
         public JobProcessingWorker(
             IServiceScopeFactory scopeFactory,
+            IJobStore jobStore,
             IOptionsMonitor<JobSchedulerOptions> options,
             ILogger<JobProcessingWorker> logger)
         {
             _scopeFactory = scopeFactory;
+            _jobStore = jobStore;
             _options = options;
             _logger = logger;
         }
@@ -62,8 +66,16 @@ namespace JobScheduler.Core.HostedServices
 
                     var processor = scope.ServiceProvider.GetRequiredService<JobProcessor>();
 
-                    var result = await processor.TryProcessOneAsync(
-                            workerId,
+                    // TryClaimNextRunnableJobAsync mark's job as processing state
+                    var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, _options.CurrentValue.BatchSize, _options.CurrentValue.LockDuration, ct);
+
+                    if (job is null)
+                    {
+                        return Task.FromResult(JobProcessResult.NoJobAvailable);
+                    }
+
+                    var result = await processor.ProcessAsync(
+                            job,
                             stoppingToken);
 
                     if (result == JobProcessResult.NoJobAvailable)
