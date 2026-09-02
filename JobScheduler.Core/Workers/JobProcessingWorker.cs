@@ -114,15 +114,16 @@ namespace JobScheduler.Core.HostedServices
 
             IReadOnlyList<JobRecord> jobs;
 
-            await using var scope = _scopeFactory.CreateAsyncScope();
+            await using (var scope = _scopeFactory.CreateAsyncScope())
+            {
+                var jobstore = scope.ServiceProvider.GetRequiredService<IJobStore>();
 
-            var jobstore = scope.ServiceProvider.GetRequiredService<IJobStore>();
-
-            jobs = await jobstore.TryClaimNextRunnableJobAsync(
-                workerId,
-                _options.CurrentValue.BatchSize,
-                _options.CurrentValue.LockDuration, 
-                stoppingToken);
+                jobs = await jobstore.TryClaimNextRunnableJobAsync(
+                    workerId,
+                    _options.CurrentValue.BatchSize,
+                    _options.CurrentValue.LockDuration,
+                    stoppingToken);
+            }
 
             if (jobs.Count == 0)
             {
