@@ -124,7 +124,7 @@ namespace JobScheduler.Core.HostedServices
 
             await using var scope = _scopeFactory.CreateAsyncScope();
 
-            var jobstore = scope.ServiceProvider.GetService<IJobStore>();
+            var jobstore = scope.ServiceProvider.GetRequiredService<IJobStore>();
 
             jobs = await jobstore.TryClaimNextRunnableJobAsync(
                 workerId,
