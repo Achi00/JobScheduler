@@ -15,19 +15,16 @@ namespace JobScheduler.Core.HostedServices
     internal sealed class JobProcessingWorker : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
-        private readonly IJobStore _jobStore;
         // using IOptionsMonitor for live config update, this service is always singleton, otherwise IOptions
         private readonly IOptionsMonitor<JobSchedulerOptions> _options;
         private readonly ILogger<JobProcessingWorker> _logger;
 
         public JobProcessingWorker(
             IServiceScopeFactory scopeFactory,
-            IJobStore jobStore,
             IOptionsMonitor<JobSchedulerOptions> options,
             ILogger<JobProcessingWorker> logger)
         {
             _scopeFactory = scopeFactory;
-            _jobStore = jobStore;
             _options = options;
             _logger = logger;
         }
@@ -118,6 +115,50 @@ namespace JobScheduler.Core.HostedServices
                 workerId);
         }
 
+        // batching and claiming jobs, instead of one job per trip, N jobs per trip depending on batchSize configuration
+        // wirker is singleton, this needs its own short lived scope to resolve needed services
+        // returns how many jobs were claimsm, if 0 then nothing is available, delay before next attempt
+        private async Task<int> RunOneBatchAsync(string workerId, CancellationToken stoppingToken)
+        {
+            IReadOnlyList<JobRecord> jobs;
+
+            await using var scope = _scopeFactory.CreateAsyncScope();
+
+            var jobstore = scope.ServiceProvider.GetService<IJobStore>();
+
+            jobs = await jobstore.TryClaimNextRunnableJobAsync(
+                workerId,
+                _options.CurrentValue.BatchSize,
+                _options.CurrentValue.LockDuration, 
+                stoppingToken);
+
+            if (jobs.Count == 0)
+            {
+                return 0;
+            }
+
+            using var semaphore = new SemaphoreSlim(_options.CurrentValue.MaxConcurrencyPerBatch);
+
+            var tasks = jobs.Select(async job =>
+            {
+                await semaphore.WaitAsync(stoppingToken);
+                try
+                {
+                    await using var scope = _scopeFactory.CreateAsyncScope();
+                    var processor = scope.ServiceProvider.GetRequiredService<JobProcessor>();
+                    await processor.ProcessAsync(job, stoppingToken);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            await Task.WhenAll(tasks);
+            return jobs.Count;
+        }
+
+        // randomizing delays to avoid large queues or big spikes in processing
         private Task DelayWithJitterAsync(CancellationToken cancellationToken)
         {
             var baseDelay = _options.CurrentValue.PollingInterval;
