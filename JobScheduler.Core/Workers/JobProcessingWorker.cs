@@ -59,25 +59,10 @@ namespace JobScheduler.Core.HostedServices
             {
                 try
                 {
-                    await using var scope = _scopeFactory.CreateAsyncScope();
+                    var claimedCount = await RunOneBatchAsync(workerId, stoppingToken);
 
-                    var processor = scope.ServiceProvider.GetRequiredService<JobProcessor>();
-
-                    // TryClaimNextRunnableJobAsync mark's job as processing state
-                    var job = await _jobStore.TryClaimNextRunnableJobAsync(workerId, _options.CurrentValue.BatchSize, _options.CurrentValue.LockDuration, ct);
-
-                    if (job is null)
+                    if (claimedCount == 0)
                     {
-                        return Task.FromResult(JobProcessResult.NoJobAvailable);
-                    }
-
-                    var result = await processor.ProcessAsync(
-                            job,
-                            stoppingToken);
-
-                    if (result == JobProcessResult.NoJobAvailable)
-                    {
-                        // adding small randomized delay to avoid thundering herd / synchronized polling problem, causes large load/spikes for syncronized jobs
                         await DelayWithJitterAsync(stoppingToken);
                     }
                 }
@@ -116,7 +101,7 @@ namespace JobScheduler.Core.HostedServices
         }
 
         // batching and claiming jobs, instead of one job per trip, N jobs per trip depending on batchSize configuration
-        // wirker is singleton, this needs its own short lived scope to resolve needed services
+        // worker is singleton, this needs its own short lived scope to resolve needed services
         // returns how many jobs were claimsm, if 0 then nothing is available, delay before next attempt
         private async Task<int> RunOneBatchAsync(string workerId, CancellationToken stoppingToken)
         {
