@@ -105,6 +105,13 @@ namespace JobScheduler.Core.HostedServices
         // returns how many jobs were claimsm, if 0 then nothing is available, delay before next attempt
         private async Task<int> RunOneBatchAsync(string workerId, CancellationToken stoppingToken)
         {
+            // catching MaxConcurrencyPerBatch early can cause permit blocks forever if 0 or less
+            if (_options.CurrentValue.MaxConcurrencyPerBatch <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(JobSchedulerOptions.MaxConcurrencyPerBatch)} must be greater than zero.");
+            }
+
             IReadOnlyList<JobRecord> jobs;
 
             await using var scope = _scopeFactory.CreateAsyncScope();
