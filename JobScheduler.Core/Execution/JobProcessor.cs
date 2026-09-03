@@ -1,6 +1,7 @@
 ﻿using JobScheduler.Abstractions.Jobs.Contexts;
 using JobScheduler.Abstractions.Jobs.Structs;
 using JobScheduler.Core.Enums;
+using JobScheduler.Core.Exceptions;
 using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Options;
 using JobScheduler.Core.Registry.Interfaces;
@@ -70,6 +71,13 @@ namespace JobScheduler.Core.Execution
                 var result = await _jobStore.MarkSucceededAsync(job.Id, job.LockToken, ct);
 
                 return HandleSucceededTransitionResult(job, result);
+            }
+            // if no job is registered by client
+            catch (JobExecutorNotFoundException ex)
+            {
+                _logger.LogError(ex, "Job {JobId} references an unregistered job type '{JobType}'. Failing immediately without retry.", job.Id, job.JobType);
+                var result = await _jobStore.MarkFailedAsync(job.Id, job.LockToken, JobError.FromException(ex), ct);
+                return HandleFailedTransitionResult(job, result);
             }
             catch (Exception ex)
             {

@@ -1,4 +1,5 @@
-﻿using JobScheduler.Core.Execution.Interfaces;
+﻿using JobScheduler.Core.Exceptions;
+using JobScheduler.Core.Execution.Interfaces;
 using JobScheduler.Core.Registry.Interfaces;
 
 namespace JobScheduler.Core.Registry
@@ -17,7 +18,7 @@ namespace JobScheduler.Core.Registry
         {
             if (!_executors.TryGetValue(jobType, out var executor))
             {
-                throw new InvalidOperationException($"No job executor registered for job type '{jobType}'");
+                throw new JobExecutorNotFoundException(jobType);
             }
 
             return executor;
