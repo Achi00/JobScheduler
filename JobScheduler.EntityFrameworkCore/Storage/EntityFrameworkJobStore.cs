@@ -295,7 +295,7 @@ namespace JobScheduler.EntityFrameworkCore.Storage
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-            if (await reader.ReadAsync(cancellationToken))
+            while (await reader.ReadAsync(cancellationToken))
             {
                 var entity = JobEntityDataReader.Read(reader);
                 results.Add(JobEntityMapper.ToRecord(entity));

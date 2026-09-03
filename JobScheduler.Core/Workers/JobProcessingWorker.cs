@@ -1,5 +1,4 @@
-﻿using JobScheduler.Core.Enums;
-using JobScheduler.Core.Execution;
+﻿using JobScheduler.Core.Execution;
 using JobScheduler.Core.Options;
 using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.DependencyInjection;
