@@ -7,6 +7,7 @@ namespace JobScheduler.Storage.EntityFrameworkCore.Interfaces
     {
         DbCommand CreateClaimNextRunnableJobCommand(
             DbConnection connection,
+            int batchSize,
             string workerId,
             TimeSpan lockDuration);
 

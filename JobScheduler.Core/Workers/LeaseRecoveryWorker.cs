@@ -23,39 +23,51 @@ namespace JobScheduler.Core.Workers
         {
             // workes based on options passed interval
             using var timer = new PeriodicTimer(_options.CurrentValue.LeaseRecoveryInterval);
-            while (await timer.WaitForNextTickAsync(stoppingToken))
+            
+            try
             {
-                try
+                while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
-                    await using var scope =
-                        _scopeFactory.CreateAsyncScope();
-
-                    var store =
-                        scope.ServiceProvider.GetRequiredService<IJobStore>();
-
-                    var recovered = await store.RecoverExpiredJobsAsync(
-                        _options.CurrentValue.LeaseRecoveryBatchSize,
-                        _options.CurrentValue.LeaseRecoveryInterval,
-                        stoppingToken);
-
-                    if (recovered > 0)
+                    try
                     {
-                        _logger.LogWarning(
-                            "Recovered {RecoveredCount} jobs with expired leases.",
-                            recovered);
+                        await using var scope =
+                            _scopeFactory.CreateAsyncScope();
+
+                        var store =
+                            scope.ServiceProvider.GetRequiredService<IJobStore>();
+
+                        var recovered = await store.RecoverExpiredJobsAsync(
+                            _options.CurrentValue.LeaseRecoveryBatchSize,
+                            _options.CurrentValue.LeaseRecoveryInterval,
+                            stoppingToken);
+
+                        if (recovered > 0)
+                        {
+                            _logger.LogWarning(
+                                "Recovered {RecoveredCount} jobs with expired leases.",
+                                recovered);
+                        }
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    catch (ObjectDisposedException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        // host is tearing down mid-iteration,expected shutdown race between many workers, can dispose objectt when some worker is mid cycle
+                        break;
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.LogError(
+                            exception,
+                            "An error occurred while recovering expired job leases.");
                     }
                 }
-                catch (OperationCanceledException)
-                    when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception exception)
-                {
-                    _logger.LogError(
-                        exception,
-                        "An error occurred while recovering expired job leases.");
-                }
+            }
+            catch (OperationCanceledException)
+            when (stoppingToken.IsCancellationRequested)
+            {
             }
         }
     }

@@ -10,8 +10,9 @@
             Guid jobId,
             CancellationToken cancellationToken);
 
-        Task<JobRecord?> TryClaimNextRunnableJobAsync(
+        Task<IReadOnlyList<JobRecord>> TryClaimNextRunnableJobAsync(
             string workerId,
+            int batchSize,
             TimeSpan lockDuration,
             CancellationToken cancellationToken);
 

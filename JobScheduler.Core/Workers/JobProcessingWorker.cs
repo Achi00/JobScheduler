@@ -1,6 +1,6 @@
-﻿using JobScheduler.Core.Enums;
-using JobScheduler.Core.Execution;
+﻿using JobScheduler.Core.Execution;
 using JobScheduler.Core.Options;
+using JobScheduler.Storage.Abstractions.Jobs;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -58,23 +58,21 @@ namespace JobScheduler.Core.HostedServices
             {
                 try
                 {
-                    await using var scope = _scopeFactory.CreateAsyncScope();
+                    var claimedCount = await RunOneBatchAsync(workerId, stoppingToken);
 
-                    var processor = scope.ServiceProvider.GetRequiredService<JobProcessor>();
-
-                    var result = await processor.TryProcessOneAsync(
-                            workerId,
-                            stoppingToken);
-
-                    if (result == JobProcessResult.NoJobAvailable)
+                    if (claimedCount == 0)
                     {
-                        // adding small randomized delay to avoid thundering herd / synchronized polling problem, causes large load/spikes for syncronized jobs
                         await DelayWithJitterAsync(stoppingToken);
                     }
                 }
                 // just cancel
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
+                    break;
+                }
+                catch (ObjectDisposedException) when (stoppingToken.IsCancellationRequested)
+                {
+                    // host is tearing down mid-iteration,expected shutdown race between many workers, can dispose objectt when some worker is mid cycle
                     break;
                 }
                 catch (Exception ex)
@@ -84,7 +82,15 @@ namespace JobScheduler.Core.HostedServices
                         "Job worker {WorkerId} failed.",
                         workerId);
 
-                    await DelayWithJitterAsync(stoppingToken);
+                    try
+                    {
+                        await DelayWithJitterAsync(stoppingToken);
+                    }
+                    catch (OperationCanceledException)
+                        when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -93,6 +99,58 @@ namespace JobScheduler.Core.HostedServices
                 workerId);
         }
 
+        // batching and claiming jobs, instead of one job per trip, N jobs per trip depending on batchSize configuration
+        // worker is singleton, this needs its own short lived scope to resolve needed services
+        // returns how many jobs were claimsm, if 0 then nothing is available, delay before next attempt
+        private async Task<int> RunOneBatchAsync(string workerId, CancellationToken stoppingToken)
+        {
+            // catching MaxConcurrencyPerBatch early can cause permit blocks forever if 0 or less
+            if (_options.CurrentValue.MaxConcurrencyPerBatch <= 0)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(JobSchedulerOptions.MaxConcurrencyPerBatch)} must be greater than zero.");
+            }
+
+            IReadOnlyList<JobRecord> jobs;
+
+            await using (var scope = _scopeFactory.CreateAsyncScope())
+            {
+                var jobstore = scope.ServiceProvider.GetRequiredService<IJobStore>();
+
+                jobs = await jobstore.TryClaimNextRunnableJobAsync(
+                    workerId,
+                    _options.CurrentValue.BatchSize,
+                    _options.CurrentValue.LockDuration,
+                    stoppingToken);
+            }
+
+            if (jobs.Count == 0)
+            {
+                return 0;
+            }
+
+            using var semaphore = new SemaphoreSlim(_options.CurrentValue.MaxConcurrencyPerBatch);
+
+            var tasks = jobs.Select(async job =>
+            {
+                await semaphore.WaitAsync(stoppingToken);
+                try
+                {
+                    await using var scope = _scopeFactory.CreateAsyncScope();
+                    var processor = scope.ServiceProvider.GetRequiredService<JobProcessor>();
+                    await processor.ProcessAsync(job, stoppingToken);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            await Task.WhenAll(tasks);
+            return jobs.Count;
+        }
+
+        // randomizing delays to avoid large queues or big spikes in processing
         private Task DelayWithJitterAsync(CancellationToken cancellationToken)
         {
             var baseDelay = _options.CurrentValue.PollingInterval;

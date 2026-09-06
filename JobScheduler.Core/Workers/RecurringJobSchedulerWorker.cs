@@ -40,18 +40,23 @@ namespace JobScheduler.Core.Workers
                     {
                         _logger.LogInformation("Dispatched {Count} recurring job instance(s).", dispatched);
                     }
+
+                    await Task.Delay(_options.CurrentValue.RecurringCheckInterval, stoppingToken);
                 }
                 // stopping toket passed
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
                     break;
                 }
+                catch (ObjectDisposedException) when (stoppingToken.IsCancellationRequested)
+                {
+                    // host is tearing down mid-iteration,expected shutdown race between many workers, can dispose objectt when some worker is mid cycle
+                    break;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Recurring job scheduler failed.");
                 }
-
-                await Task.Delay(_options.CurrentValue.RecurringCheckInterval, stoppingToken);
             }
 
             _logger.LogInformation("Recurring job scheduler stopped.");
