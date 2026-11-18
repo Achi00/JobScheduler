@@ -1,23 +1,23 @@
 # JobScheduler
 
-A distributed, database-backed background job scheduler for .NET — built from scratch as a learning project exploring concurrency, distributed locking, and storage-engine design. Conceptually similar to Hangfire, but built independently to understand *why* systems like it are designed the way they are, not to replace them.
+A distributed, database-backed background job scheduler for .NET - built from scratch as a learning project exploring concurrency, distributed locking, and storage-engine design. Conceptually similar to Hangfire, but built independently to understand *why* systems like it are designed the way they are, not to replace them.
 
 Runs on SQL Server. Supports fire-and-forget jobs, delayed jobs, recurring (cron) jobs, automatic retries with exponential backoff, crash recovery via lease expiry, and batch job claiming for throughput.
 
 ## Why this exists
 
-This started as a portfolio project and became a deliberate exercise in building the concurrency-safety mechanisms that real job schedulers depend on — instead of assuming they "just work" underneath a library. Every core design decision (locking strategy, fencing tokens, lease recovery, batching) was arrived at by reasoning through a real failure mode first, then validated by killing the process mid-execution and watching the system recover correctly.
+This started as a portfolio project and became a deliberate exercise in building the concurrency-safety mechanisms that real job schedulers depend on - instead of assuming they "just work" underneath a library. Every core design decision (locking strategy, fencing tokens, lease recovery, batching) was arrived at by reasoning through a real failure mode first, then validated by killing the process mid-execution and watching the system recover correctly.
 
 ## Features
 
-- **Fire-and-forget jobs** — `EnqueueAsync<TPayload>(payload)`
-- **Delayed jobs** — `ScheduleAsync<TPayload>(payload, runAt)`
-- **Recurring jobs** — cron-based, timezone-aware, via `AddOrUpdateAsync(id, cronExpression, payload, timeZoneId)`
-- **Automatic retries** — configurable max attempts, exponential backoff
-- **Crash recovery** — a dedicated lease-recovery worker reclaims jobs left behind by workers that crashed or hung mid-execution
-- **Batch claiming** — workers claim multiple jobs per database round trip instead of one at a time
-- **Pluggable storage** — storage is behind an abstraction (`IJobStore`); SQL Server is the only implementation today, but nothing above the storage layer depends on it directly, currently only SqlServer added
-- **No message broker required** — built entirely on database polling + row-level locking; RabbitMQ/Kafka are not dependencies
+- **Fire-and-forget jobs** - `EnqueueAsync<TPayload>(payload)`
+- **Delayed jobs** - `ScheduleAsync<TPayload>(payload, runAt)`
+- **Recurring jobs** - cron-based, timezone-aware, via `AddOrUpdateAsync(id, cronExpression, payload, timeZoneId)`
+- **Automatic retries** - configurable max attempts, exponential backoff
+- **Crash recovery** - a dedicated lease-recovery worker reclaims jobs left behind by workers that crashed or hung mid-execution
+- **Batch claiming** - workers claim multiple jobs per database round trip instead of one at a time
+- **Pluggable storage** - storage is behind an abstraction (`IJobStore`); SQL Server is the only implementation today, but nothing above the storage layer depends on it directly, currently only SqlServer added
+- **No message broker required** - built entirely on database polling + row-level locking; RabbitMQ/Kafka are not dependencies
 
 ## Architecture
 
@@ -55,9 +55,9 @@ WHERE Status IN (Enqueued, Retrying, Scheduled) AND AvailableAt <= @Now
 ORDER BY AvailableAt, CreatedAt
 ```
 
-- `UPDLOCK` — claims the row atomically at read time, closing the gap between "check if available" and "mark as claimed"
-- `READPAST` — a worker that finds a row already locked by another worker skips it instead of blocking, so concurrent claims never queue up single-file
-- `ROWLOCK` — keeps the lock scoped to individual rows, not pages or the whole table
+- `UPDLOCK` - claims the row atomically at read time, closing the gap between "check if available" and "mark as claimed"
+- `READPAST` - a worker that finds a row already locked by another worker skips it instead of blocking, so concurrent claims never queue up single-file
+- `ROWLOCK` - keeps the lock scoped to individual rows, not pages or the whole table
 
 Ef core does not provide abstractions or methods for this, that is why I manyaly have writen query in `SqlServerJobStoreCommandFactory` class
 
@@ -70,9 +70,79 @@ UPDATE Jobs SET Status = @Succeeded, ...
 WHERE Id = @jobId AND Status = @Processing AND LockToken = @expectedLockToken
 ```
 
-If a worker crashes or hangs past its lease duration, `LeaseRecoveryWorker` reclaims the job and **increments the token**. If the original worker was only paused (not dead) and wakes up later to report a result, its write matches zero rows — the stale token no longer matches — and the result is safely rejected instead of corrupting whatever the new claimant is doing.
+If a worker crashes or hangs past its lease duration, `LeaseRecoveryWorker` reclaims the job and **increments the token**. If the original worker was only paused (not dead) and wakes up later to report a result, its write matches zero rows - the stale token no longer matches - and the result is safely rejected instead of corrupting whatever the new claimant is doing.
 
 This was validated by actually killing the host process mid-execution of a long-running job and confirming the recovered row's lock token changed and the original worker's (simulated) write would be rejected.
+
+## Defining and registering jobs
+ 
+The registration style `AddJob<TPayload, THandler>()` is borrowed from MassTransit library, where you register consumers per message type. A job is two things the client application writes itself: a **payload model** (the data the job needs) and a **handler** (the code that runs).
+
+# Job Model
+```csharp
+[JobName("SendEmail")]
+public sealed record SendEmailJob(Guid UserId, string TemplateName);
+```
+`[JobName]` sets the stable string stored in the database's `JobType` column. Without it, the scheduler falls back to `typeof(TPayload).FullName` which works, but ties persisted jobs to your namespace and class name. Renaming or moving the class would orphan every job already waiting in the database, because their stored type string would no longer match anything registered. An explicit `[JobName]` keeps persisted data independent of code structure.
+
+# Job Handler
+```chsrp
+public class SendEmailJobHandler : IJobHandler<SendEmailJob>
+{
+    private readonly ILogger<SendEmailJobHandler> _logger;
+
+    public SendEmailJobHandler(ILogger<SendEmailJobHandler> logger)
+    {
+        _logger = logger;
+    }
+    public async Task HandleAsync(SendEmailJob payload, JobExecutionContext context, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "Executing job {JobId}, attempt {Attempt}. Sending {Template} email to user {UserId}",
+            context.JobId,
+            context.AttemptCount,
+            payload.TemplateName,
+            payload.UserId
+        );
+        // articifial delay
+        await Task.Delay(1000, cancellationToken);
+    }
+}
+```
+
+All handlers should implament interface IJobHandler<in TPayload>
+
+```csharp
+public interface IJobHandler<in TPayload>
+{
+    Task HandleAsync(TPayload payload, JobExecutionContext context, CancellationToken cancellationToken);
+}
+```
+
+Handlers are resolved from DI in a fresh scope per job execution, so they can safely take scoped dependencies such as a `DbContext`.
+
+Finally jobs are registered in DI
+```csharp
+builder.Services.AddJob<SendEmailJob, SendEmailJobHandler>();
+```
+ 
+Under the hood:
+ 
+```csharp
+public static IServiceCollection AddJob<TPayload, THandler>(this IServiceCollection services)
+    where THandler : class, IJobHandler<TPayload>
+{
+    var jobType = JobTypeNameResolver.Resolve<TPayload>();
+ 
+    services.AddScoped<THandler>();
+    services.AddSingleton<IJobExecutor>(new JobExecutor<TPayload, THandler>(jobType));
+ 
+    return services;
+}
+```
+`JobTypeNameResolver` is the single source of truth for a job's type string, it is used both here, at registration, and in `BackgroundJobClient` at enqueue time. Both sides must compute the string identically, or a worker would claim a job whose `JobType` matches no registered executor. (This exact mismatch happened to me during development when registration used `FullName` while enqueueing used `[JobName]`; routing both through one resolver made it impossible by construction.)
+
+At runtime, the worker looks up the executor by the stored `JobType`, deserializes `PayloadJson` into `TPayload`, resolves `THandler` from the job's DI scope, and calls `HandleAsync`. If no executor is registered for a stored job type, the job is failed immediately with `JobExecutorNotFoundException` rather than retried, a missing registration is a configuration bug that retrying can never fix so we wont try it again.
 
 ## Getting started
 
@@ -154,11 +224,11 @@ Benchmarked by seeding 5,000 no-op jobs and measuring end-to-end throughput on a
 
 **What changed:** the original design issued one database round trip per claimed job. Batch claiming (`TOP (@BatchSize)` instead of `TOP (1)`, with bounded concurrent execution per batch via a semaphore) reduced claim round trips roughly 10x, for a ~60% throughput improvement.
 
-**Where the new ceiling comes from:** measuring `Batch Requests/sec` during a run shows request volume closely matches `(jobs ÷ batch size) + jobs` — the claim path is now batched, but marking a job succeeded is still one round trip per job. Increasing batch size or worker count past this point yields no further gain, because the bottleneck moved, not disappeared. Batching job completion (via a table-valued parameter or grouped `MERGE`) would be the next optimization, and was scoped but deliberately not built — the value of correctly *diagnosing* the new bottleneck was the point of this exercise.
+**Where the new ceiling comes from:** measuring `Batch Requests/sec` during a run shows request volume closely matches `(jobs ÷ batch size) + jobs` - the claim path is now batched, but marking a job succeeded is still one round trip per job. Increasing batch size or worker count past this point yields no further gain, because the bottleneck moved, not disappeared. Batching job completion (via a table-valued parameter or grouped `MERGE`) would be the next optimization, and was scoped but deliberately not built - the value of correctly *diagnosing* the new bottleneck was the point of this exercise.
 
 ## What's not here
 
-This is a learning project, not a Hangfire replacement. No dashboard UI, no storage backends beyond SQL Server, no job continuations/batches/chains, no distributed cron leader election across multiple hosts. The focus was the correctness of the core engine — claiming, locking, retrying, and recovering — not feature breadth.
+This is a learning project, not a Hangfire replacement. No dashboard UI, no storage backends beyond SQL Server, no job continuations/batches/chains, no distributed cron leader election across multiple hosts. The focus was the correctness of the core engine - claiming, locking, retrying, and recovering - not feature breadth.
 
 ## Testing
 
